@@ -1,0 +1,57 @@
+name: CI/CD Pipeline to AWS EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/bubble-pop-backend:latest
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/bubble-pop-frontend:latest
+
+      - name: Build and Push Nginx Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./nginx
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/bubble-pop-nginx:latest
+
+  # deploy job is temporarily commented out until EC2 is ready
+  # deploy:
+  #   needs: build-and-push
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Trigger EC2 Deployment via SSH
+  #       uses: appleboy/ssh-action@master
+  #       with:
+  #         host: ${{ secrets.EC2_HOST }}
+  #         username: ${{ secrets.EC2_USER }}
+  #         key: ${{ secrets.EC2_SSH_KEY }}
+  #         script: |
+  #           cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush
+  #           echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+  #           docker compose -f docker-compose.prod.yml pull
+  #           docker compose -f docker-compose.prod.yml up -d --remove-orphans
