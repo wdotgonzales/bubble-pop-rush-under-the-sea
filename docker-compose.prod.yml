@@ -8,24 +8,30 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wdotgonzales -d bubble_pop_rush_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
   backend:
-    image: ghcr.io/${GHCR_USERNAME}/bubble-pop-backend:latest
+    image: ghcr.io/wdotgonzales/bubble-pop-backend:latest
     container_name: bubble_backend_prod
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
 
   frontend:
-    image: ghcr.io/${GHCR_USERNAME}/bubble-pop-frontend:latest
+    image: ghcr.io/wdotgonzales/bubble-pop-frontend:latest
     container_name: bubble_frontend_prod
     restart: always
 
   nginx:
-    image: ghcr.io/${GHCR_USERNAME}/bubble-pop-nginx:latest
+    image: ghcr.io/wdotgonzales/bubble-pop-nginx:latest
     container_name: bubble_nginx_prod
     ports:
       - "80:80"

@@ -50,7 +50,19 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush
-            echo "${{ secrets.CR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            sudo docker compose -f docker-compose.prod.yml pull
-            sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans
+              cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush-under-the-sea
+              
+              # 1. Pull latest code & config changes from GitHub
+              git pull origin main
+              
+              # 2. Log into GitHub Container Registry
+              echo "${{ secrets.CR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+              
+              # 3. Pull latest built images
+              sudo docker compose -f docker-compose.prod.yml pull
+              
+              # 4. Start containers and wait for healthy database
+              sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait
+              
+              # 5. Run automated database migrations
+              sudo docker exec bubble_backend_prod alembic upgrade head
