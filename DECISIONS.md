@@ -365,6 +365,90 @@ vectors were regenerated. A round started under version 2 that is submitted afte
 the deploy gets 409 (the client build is out of date) and is dropped. That is the
 designed behaviour; with no real players yet it costs nothing.
 
+## PR 7: Client foundation
+
+### React and TypeScript, not plain TypeScript
+The concept doc proposed plain TypeScript with a hand-written screen switcher. The
+project already used React and Vite, and Start, Game Over and the leaderboard are
+ordinary UI with a little state, which React expresses well. The part that should not
+go through React is the 60 fps game loop, so gameplay will be one Canvas driven by
+requestAnimationFrame, mounted by a React component. Tailwind styles the screens.
+Cost: React adds about 45 KB gzipped, well inside Facebook's 5 MB guidance.
+
+### Facebook is behind one interface, with a mock
+Every Facebook call (init, signed player info, player data, share) goes through the
+`Platform` interface, so the game never touches `window.FBInstant`. Outside Facebook
+a mock stands in. Facebook's signature can only be made with the app secret, so the
+mock takes a signature produced by `backend/scripts/make_test_signature.py` (valid for
+10 minutes) from the URL: `?mock_signature=...`. During `npm run dev` the mock is used
+automatically; `?mock=1` forces it in a production build.
+
+### One small API client
+A typed fetch wrapper with a timeout and a bearer token, and two error types: `ApiError`
+(the server answered with an error; carries the status and the machine-readable code)
+and `NetworkError` (no usable answer: offline, CORS, timeout). `isRetryable` encodes the
+submit route's contract: network errors, 429 and 5xx are retried, every other 4xx means
+the round is finished for good. A 401 signs in again and retries once.
+
+### Session renewal
+The backend accepts Facebook's signed player info for 10 minutes and gives back a
+one-hour token. The session manager signs in again a minute before expiry, always with
+a fresh signature from Facebook, and shares one sign-in between overlapping callers so
+a burst of requests cannot trigger several. A failed sign-in is not remembered.
+
+### The client imports `shared/` directly
+The spawn generator is imported from `../shared` through an alias, not copied. The
+golden vectors the server's tests use also run through the client's own toolchain, so
+a drift between the generator, the build and the server fails a test. Cost: the
+frontend Docker image can no longer be built from `frontend/` alone. Its build context
+is now the repository root (`frontend/Dockerfile`, with a `.dockerignore` beside it
+that keeps `node_modules`, `.env` and the backend out).
+
+### A version guard on every round
+A round carries the server's `config_version`. If it differs from this build's, the
+schedule would differ too, so the client refuses to play it. The server would answer 409
+on submit anyway; this fails earlier and says why.
+
+### A connection check as the first screen
+The home screen is a temporary page that walks the real path: platform, backend,
+sign-in, profile, start a round, build its schedule. It exists so a first build can be
+staged on Facebook early. Two things have only been tested with our own stand-ins until
+then: a real Facebook signature against the backend, and the Facebook origin against
+CORS. The page prints its own origin, which is exactly what `CORS_ORIGINS` needs.
+
+### Facebook bundle settings
+`fbapp-config.json` sets `NAV_BAR` (a fixed bar, so the menu cannot cover the timer and
+score pills), `PORTRAIT` for phones, and a `LANDSCAPE` override for desktop, matching
+the two layouts in the design. The SDK script tag is `fbinstant.8.0.js`, the version
+Facebook's upload documentation currently names. `npm run pack` zips `dist/` with
+`index.html` and `fbapp-config.json` at the root of the archive, as Facebook requires.
+The zip writer is about 70 lines on Node's built-in zlib rather than a dependency, and
+produces identical bytes for identical input.
+
+### Facebook's SDK 8.0 has no player names or photos
+The first staged build found this: `FBInstant.player.getName()` and `getPhoto()` do not
+exist in SDK 8.0 ("Network Enabled Zero Permissions"). Facebook removed them; names and
+photos can only be shown inside Facebook-controlled overlay views, and a game may not
+store them on its own server. `getID()` and `getSignedPlayerInfoAsync()` still exist, so
+sign-in is unaffected. The client therefore treats name and photo as optional: it sends
+them when an older SDK offers them and sends nothing otherwise. What the leaderboard
+shows as a name is a separate decision (see the next PR).
+
+### Production builds point at the production API
+Vite reads `frontend/.env` in every build, so the first Facebook zip had the local
+`http://localhost:8000` baked in. `frontend/.env.production` (committed, no secrets)
+overrides it for production builds.
+
+### TypeScript is pinned to 6
+A fresh install pulls TypeScript 7, which `typescript-eslint` does not support yet, so
+`npm run lint` fails to start. TypeScript 6 type-checks the same code and keeps lint
+working. Revisit once `typescript-eslint` supports 7. `.npmrc` sets `legacy-peer-deps`,
+matching the Docker build, because the lint plugins' peer ranges lag behind ESLint 10.
+
+### Not here yet
+The game itself, the real screens, the offline queue and sharing. This PR is the
+foundation they stand on.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
