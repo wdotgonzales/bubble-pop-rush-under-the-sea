@@ -56,15 +56,15 @@ def _replay_cases() -> list[dict]:
             if rng.below(100) < 75:
                 t = b.spawn_ms + rng.below(b.lifetime_ms + 60)
                 reach = b.radius * 13 // 10
-                x = min(config.FIELD_SIZE, max(0, b.x + rng.below(2 * reach + 1) - reach))
-                y = min(config.FIELD_SIZE, max(0, b.y + rng.below(2 * reach + 1) - reach))
+                x = min(config.FIELD_WIDTH, max(0, b.x + rng.below(2 * reach + 1) - reach))
+                y = min(config.FIELD_HEIGHT, max(0, b.y + rng.below(2 * reach + 1) - reach))
                 taps.append(Tap(t, x, y))
         for _ in range(25):
             taps.append(
                 Tap(
                     rng.below(config.ROUND_DURATION_MS + 1),
-                    rng.below(config.FIELD_SIZE + 1),
-                    rng.below(config.FIELD_SIZE + 1),
+                    rng.below(config.FIELD_WIDTH + 1),
+                    rng.below(config.FIELD_HEIGHT + 1),
                 )
             )
         taps.sort(key=lambda tap: (tap.t, tap.x, tap.y))

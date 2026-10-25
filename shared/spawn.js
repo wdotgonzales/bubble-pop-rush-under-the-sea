@@ -13,12 +13,13 @@
 // Check it against the server's output with:  node shared/check-vectors.mjs
 
 export const CONFIG = {
-  version: 2,
+  version: 3,
   duration_ms: 30000,
-  field_size: 10000,
+  field_width: 10000,
+  field_height: 21640,
   initial_delay_ms: 400,
   spawn_jitter_permille: 200,
-  hit_min_radius: 600,
+  hit_min_radius: 900,
   hit_grace_ms: 50,
   phases: [
     { start_ms: 0, end_ms: 10000, spawn_interval_ms: 700, lifetime_ms: 1800 },
@@ -26,8 +27,8 @@ export const CONFIG = {
     { start_ms: 20000, end_ms: 30000, spawn_interval_ms: 350, lifetime_ms: 1000 },
   ],
   kinds: [
-    { id: 0, name: 'standard', points: 1, radius: 900, lifetime_pct: 100, chance_permille: 850 },
-    { id: 1, name: 'pearl', points: 3, radius: 800, lifetime_pct: 70, chance_permille: 150 },
+    { id: 0, name: 'standard', points: 1, radius: 1700, lifetime_pct: 100, chance_permille: 850 },
+    { id: 1, name: 'pearl', points: 3, radius: 1400, lifetime_pct: 70, chance_permille: 150 },
   ],
 };
 
@@ -64,9 +65,10 @@ export function generateSchedule(seed) {
   while (t < CONFIG.duration_ms) {
     const phase = phaseAt(t);
     const kind = below(1000) < pearl.chance_permille ? pearl : standard;
-    const span = CONFIG.field_size - 2 * kind.radius + 1;
-    const x = kind.radius + below(span);
-    const y = kind.radius + below(span);
+    const spanX = CONFIG.field_width - 2 * kind.radius + 1;
+    const spanY = CONFIG.field_height - 2 * kind.radius + 1;
+    const x = kind.radius + below(spanX);
+    const y = kind.radius + below(spanY);
     bubbles.push({
       index: bubbles.length,
       spawn_ms: t,

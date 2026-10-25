@@ -84,7 +84,7 @@ accepted without a round the server issued.
 The schedule is generated twice: `backend/app/game/spawn.py` (server) and
 `shared/spawn.js` (client). They must agree exactly, or honest players would
 fail validation. Three rules keep them identical:
-- No floating point anywhere. Positions are integers in a 0..10000 field, times
+- No floating point anywhere. Positions are integers in a 10000 x 21640 field, times
   are whole milliseconds, chances are per-thousand, and every division is
   floor-division of non-negative integers.
 - Our own PRNG (mulberry32), not `random`. Python's `random` algorithm is an
@@ -157,17 +157,16 @@ This also made `CONFIG_VERSION` 2: the hit rules are part of the config.
 - A bubble is poppable from spawn until 50 ms after it expires. The grace absorbs
   frame jitter between when the client decided a bubble was gone and when the
   tap event was stamped.
-- Hit radius is the bubble's current radius, but never below 600 units
-  (about 6% of the field). Without a floor a shrinking bubble becomes untappable
+- Hit radius is the bubble's current radius, but never below 900 units
+  (about 9% of the field width, 35 px on a 390 px wide phone). Without a floor a shrinking bubble becomes untappable
   just before it pops, which feels broken and breaks the 48 px tap-target rule.
 - Overlapping bubbles: the newest wins, matching what is drawn on top.
 - Taps on empty water cost nothing, as the concept doc says.
 
-### Square play area
-Taps are sent in the same 0..10000 square the generator uses. The client draws
-the play area as a centred square (or letterboxed region). This keeps the server's
-hit test a plain circle check with no aspect ratio to trust. Cost: on tall phones
-some screen area is outside the bubble field; the HUD and background can use it.
+### Play area
+Taps are sent in the same field the generator uses. This started as a square and
+became portrait in PR 6 (below). Either way the server's hit test stays a plain
+circle check in field units, with no screen size to trust.
 
 ### Rhythm limits
 Rejected as impossible for a human: more than 400 taps, taps closer than 25 ms,
@@ -328,6 +327,43 @@ of downtime per deploy, which is acceptable for this project.
 The README is written for someone who has never seen the project: what it is, how
 to run it, how to try the full flow without a game client (the bot and signature
 scripts), how deployment works, and what is knowingly not solved.
+
+## PR 6: Portrait field, design-sized bubbles
+
+### Why the square field was replaced
+The design is portrait: phone screens are 390 x 844, and the desktop layout shows
+the same portrait play column with the timer and score on either side. A square
+field on that screen has two bad options. Letterbox it, and more than half the
+screen is dead space. Stretch it to fill, and every bubble becomes an oval on
+screen while the server still tests hits as circles, so taps near the top or
+bottom of a bubble would miss.
+
+The field is now 10000 wide and 21640 tall (the 390:844 ratio). The client scales
+both axes by the same factor to fit the play area, so bubbles stay round and the
+server's circle test matches what is drawn. On desktop the column is simply
+narrower than on a phone.
+
+Alternatives considered and rejected:
+- Send the screen size and let the server adapt: one more client-controlled input
+  to validate, and a different schedule on every device, so players would not be
+  comparable.
+- Several field shapes by device: the same problem, plus more to test.
+
+### Bubble sizes follow the design
+The largest bubbles in the mockups are about 135 px across on a 390 px wide
+screen. The old radii (900 and 800 on a 10000 wide field) would have drawn fresh
+bubbles about 70 px across, half the intended size. Radii are now 1700 (standard)
+and 1400 (pearl), and the minimum tap radius is 900. The spawn timings, lifetimes,
+pearl chance and the number of random draws are unchanged, so every round has the
+same rhythm and the same number of bubbles as before. Only positions and sizes
+differ. Bigger bubbles make the game a little easier; the difficulty comes from
+the phases (faster spawns, shorter lifetimes), which is where it should come from.
+
+### Config version 3
+The change alters every generated schedule, so `CONFIG_VERSION` is 3 and the shared
+vectors were regenerated. A round started under version 2 that is submitted after
+the deploy gets 409 (the client build is out of date) and is dropped. That is the
+designed behaviour; with no real players yet it costs nothing.
 
 ## Known limits and what I would do with more time
 

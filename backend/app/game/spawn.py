@@ -81,9 +81,10 @@ def generate_schedule(seed: int) -> tuple[Bubble, ...]:
     while t < config.ROUND_DURATION_MS:
         phase = phase_at(t)
         kind = pearl if rng.below(1000) < pearl.chance_permille else standard
-        span = config.FIELD_SIZE - 2 * kind.radius + 1
-        x = kind.radius + rng.below(span)
-        y = kind.radius + rng.below(span)
+        span_x = config.FIELD_WIDTH - 2 * kind.radius + 1
+        span_y = config.FIELD_HEIGHT - 2 * kind.radius + 1
+        x = kind.radius + rng.below(span_x)
+        y = kind.radius + rng.below(span_y)
         bubbles.append(
             Bubble(
                 index=len(bubbles),

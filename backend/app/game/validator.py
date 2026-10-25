@@ -64,7 +64,7 @@ def parse_taps(raw: object) -> list[Tap] | str:
             return MALFORMED
         if not 0 <= t <= config.ROUND_DURATION_MS:
             return OUT_OF_RANGE
-        if not (0 <= x <= config.FIELD_SIZE and 0 <= y <= config.FIELD_SIZE):
+        if not (0 <= x <= config.FIELD_WIDTH and 0 <= y <= config.FIELD_HEIGHT):
             return OUT_OF_RANGE
         taps.append(Tap(t=t, x=x, y=y))
     return taps

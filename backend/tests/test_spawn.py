@@ -96,11 +96,21 @@ def test_schedule_is_ordered_and_inside_the_round():
 
 
 def test_every_bubble_is_fully_inside_the_field():
-    limit = config.FIELD_SIZE
     for seed in SEEDS:
         for b in generate_schedule(seed):
-            assert b.radius <= b.x <= limit - b.radius, (seed, b)
-            assert b.radius <= b.y <= limit - b.radius, (seed, b)
+            assert b.radius <= b.x <= config.FIELD_WIDTH - b.radius, (seed, b)
+            assert b.radius <= b.y <= config.FIELD_HEIGHT - b.radius, (seed, b)
+
+
+def test_the_field_is_portrait_and_bubbles_use_all_of_it():
+    assert config.FIELD_HEIGHT > config.FIELD_WIDTH
+    ys = [b.y for seed in SEEDS for b in generate_schedule(seed)]
+    # Roughly uniform over the height: both the top and the bottom get bubbles.
+    assert min(ys) < config.FIELD_HEIGHT // 10
+    assert max(ys) > config.FIELD_HEIGHT - config.FIELD_HEIGHT // 10
+    third = config.FIELD_HEIGHT // 3
+    shares = [sum(1 for y in ys if lo <= y < lo + third) / len(ys) for lo in (0, third, 2 * third)]
+    assert all(0.25 < share < 0.42 for share in shares), shares
 
 
 def test_lifetimes_follow_the_phase_and_kind():

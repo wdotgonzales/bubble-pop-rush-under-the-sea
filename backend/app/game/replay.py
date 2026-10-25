@@ -22,8 +22,8 @@ from app.game.spawn import Bubble, radius_at
 @dataclass(frozen=True)
 class Tap:
     t: int  # ms since the round started, on the client's clock
-    x: int  # 0..FIELD_SIZE
-    y: int
+    x: int  # 0..FIELD_WIDTH
+    y: int  # 0..FIELD_HEIGHT
 
 
 def find_hit(
