@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Facebook upload bundle (npm run pack)
+fb-build.zip
