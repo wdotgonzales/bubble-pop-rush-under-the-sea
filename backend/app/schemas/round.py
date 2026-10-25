@@ -18,7 +18,7 @@ class RoundStartResponse(BaseModel):
 
 
 class SubmitRequest(BaseModel):
-    # What the player did, not what they scored: [{"t": ms, "x": 0..10000, "y": 0..10000}, ...].
+    # What the player did, not what they scored: [{"t": ms, "x": 0..10000, "y": 0..21640}, ...].
     # Each entry is checked by the validator; the cap here only bounds the parse.
     taps: list[Any] = Field(max_length=2000)
     # Recorded for audit. The server's own clock decides whether a round was long enough.

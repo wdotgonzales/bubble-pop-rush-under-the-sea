@@ -63,7 +63,16 @@ def test_taps_on_empty_water_are_fine():
 
 
 def test_taps_at_the_range_limits_are_accepted():
-    taps = [tap(0, 0, 0), tap(config.ROUND_DURATION_MS, config.FIELD_SIZE, config.FIELD_SIZE)]
+    taps = [
+        tap(0, 0, 0),
+        tap(config.ROUND_DURATION_MS, config.FIELD_WIDTH, config.FIELD_HEIGHT),
+    ]
+    assert validate_round(SEED, taps).valid
+
+
+def test_taps_in_the_lower_part_of_the_tall_field_are_accepted():
+    # y beyond FIELD_WIDTH is valid now that the field is portrait.
+    taps = [tap(1000, 5000, config.FIELD_WIDTH + 1), tap(2000, 5000, config.FIELD_HEIGHT - 50)]
     assert validate_round(SEED, taps).valid
 
 
@@ -103,9 +112,9 @@ def test_malformed_logs_are_rejected(raw):
         tap(-1),
         tap(config.ROUND_DURATION_MS + 1),
         tap(100, -1, 5000),
-        tap(100, config.FIELD_SIZE + 1, 5000),
+        tap(100, config.FIELD_WIDTH + 1, 5000),
         tap(100, 5000, -1),
-        tap(100, 5000, config.FIELD_SIZE + 1),
+        tap(100, 5000, config.FIELD_HEIGHT + 1),
     ],
 )
 def test_out_of_range_taps_are_rejected(bad):

@@ -14,7 +14,7 @@ VECTORS = json.loads(
 )
 
 
-def bubble(index, spawn_ms=0, x=5000, y=5000, kind=0, lifetime_ms=1000, radius=900):
+def bubble(index, spawn_ms=0, x=5000, y=5000, kind=0, lifetime_ms=1000, radius=config.STANDARD.radius):
     return Bubble(
         index=index,
         spawn_ms=spawn_ms,
@@ -60,14 +60,14 @@ def test_empty_water_misses():
 
 
 def test_hit_radius_edge_is_inclusive():
-    b = bubble(0, lifetime_ms=1000, radius=900)
+    b = bubble(0, lifetime_ms=1000, radius=config.STANDARD.radius)
     r = radius_at(b, 100)
     assert find_hit([b], Tap(100, 5000 + r, 5000), set()) is b
     assert find_hit([b], Tap(100, 5000 + r + 1, 5000), set()) is None
 
 
 def test_distance_is_euclidean_not_a_box():
-    b = bubble(0, radius=900)
+    b = bubble(0, radius=config.STANDARD.radius)
     r = radius_at(b, 0)
     corner = r * 80 // 100  # inside the bounding box, outside the circle
     assert find_hit([b], Tap(0, 5000 + corner, 5000 + corner), set()) is None
@@ -89,7 +89,7 @@ def test_grace_window_after_expiry():
 
 
 def test_shrunken_bubble_stays_hittable_within_the_minimum_radius():
-    b = bubble(0, lifetime_ms=1000, radius=900)
+    b = bubble(0, lifetime_ms=1000, radius=config.STANDARD.radius)
     late = 990  # radius has shrunk to almost nothing
     assert radius_at(b, late) < config.HIT_MIN_RADIUS
     inside = Tap(late, 5000, 5000 + config.HIT_MIN_RADIUS)

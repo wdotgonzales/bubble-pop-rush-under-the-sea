@@ -13,13 +13,17 @@ client must mirror the change in shared/spawn.js (or its TypeScript port).
 
 from dataclasses import dataclass
 
-CONFIG_VERSION = 2
+CONFIG_VERSION = 3
 
 ROUND_DURATION_MS = 30_000
 
-# Positions are integers in a square 0..FIELD_SIZE space. The client scales this
-# to the real play area; radii are in the same units.
-FIELD_SIZE = 10_000
+# The play field is portrait, like the phone layout in the design (390 x 844).
+# Positions are integers in 0..FIELD_WIDTH by 0..FIELD_HEIGHT; radii are in the
+# same units. The client scales BOTH axes by one factor (fit to the play area), so
+# bubbles stay round and the hit test, which is plain distance in these units,
+# matches what is drawn. On a 390 px wide phone one unit is 0.039 px.
+FIELD_WIDTH = 10_000
+FIELD_HEIGHT = 21_640
 
 # First bubble appears this long after the round starts.
 INITIAL_DELAY_MS = 400
@@ -28,8 +32,9 @@ INITIAL_DELAY_MS = 400
 # (app/game/replay.py and shared/spawn.js), so the score on screen is the score
 # the server computes.
 # A bubble can always be hit within this radius, even once it has shrunk below it,
-# so late taps stay possible and tap targets stay finger-sized.
-HIT_MIN_RADIUS = 600
+# so late taps stay possible and tap targets stay finger-sized (900 units is about
+# 35 px on a 390 px wide phone).
+HIT_MIN_RADIUS = 900
 # A bubble can still be hit this long after it expires, to absorb frame jitter.
 HIT_GRACE_MS = 50
 
@@ -64,12 +69,14 @@ class BubbleKind:
     chance_permille: int  # chance a spawn is this kind
 
 
+# Radii are sized to the design: a fresh standard bubble is about 133 px across on a
+# 390 px wide phone, like the largest bubbles in the mockups.
 STANDARD = BubbleKind(
-    id=0, name="standard", points=1, radius=900, lifetime_pct=100, chance_permille=850
+    id=0, name="standard", points=1, radius=1700, lifetime_pct=100, chance_permille=850
 )
 # The creative twist: rarer, worth 3, smaller, and gone sooner.
 PEARL = BubbleKind(
-    id=1, name="pearl", points=3, radius=800, lifetime_pct=70, chance_permille=150
+    id=1, name="pearl", points=3, radius=1400, lifetime_pct=70, chance_permille=150
 )
 KINDS = (STANDARD, PEARL)
 
@@ -79,7 +86,8 @@ def config_as_dict() -> dict:
     return {
         "version": CONFIG_VERSION,
         "duration_ms": ROUND_DURATION_MS,
-        "field_size": FIELD_SIZE,
+        "field_width": FIELD_WIDTH,
+        "field_height": FIELD_HEIGHT,
         "initial_delay_ms": INITIAL_DELAY_MS,
         "spawn_jitter_permille": SPAWN_JITTER_PERMILLE,
         "hit_min_radius": HIT_MIN_RADIUS,
