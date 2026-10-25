@@ -136,3 +136,58 @@ stale `started` rounds.
 - `players.best_round_id` points back at `rounds` with `ON DELETE SET NULL`, and
   is added with `use_alter` because the two tables reference each other.
 - Deleting a player deletes their rounds (`ON DELETE CASCADE`).
+
+## PR 3a: Score validation
+
+### The score is computed, never received
+`validate_round(seed, taps)` takes the seed the server issued, regenerates the
+bubble schedule, checks the tap log is humanly possible, and replays it. There
+is no score field in the request at all, so there is nothing to forge. The
+function is pure (no database, no clock), which is why it is tested so heavily.
+
+### The client and server use the same hit test
+`find_hit` and `replay` exist twice, in `backend/app/game/replay.py` and
+`shared/spawn.js`, and are checked against the same golden vectors. The player
+sees the score the server will compute. If the server were stricter or looser
+than the client, honest players would see one number and the leaderboard another.
+This also made `CONFIG_VERSION` 2: the hit rules are part of the config.
+
+### Hit rules
+- One tap pops at most one bubble; a bubble pops once.
+- A bubble is poppable from spawn until 50 ms after it expires. The grace absorbs
+  frame jitter between when the client decided a bubble was gone and when the
+  tap event was stamped.
+- Hit radius is the bubble's current radius, but never below 600 units
+  (about 6% of the field). Without a floor a shrinking bubble becomes untappable
+  just before it pops, which feels broken and breaks the 48 px tap-target rule.
+- Overlapping bubbles: the newest wins, matching what is drawn on top.
+- Taps on empty water cost nothing, as the concept doc says.
+
+### Square play area
+Taps are sent in the same 0..10000 square the generator uses. The client draws
+the play area as a centred square (or letterboxed region). This keeps the server's
+hit test a plain circle check with no aspect ratio to trust. Cost: on tall phones
+some screen area is outside the bubble field; the HUD and background can use it.
+
+### Rhythm limits
+Rejected as impossible for a human: more than 400 taps, taps closer than 25 ms,
+taps out of time order, and more than 16 taps inside any 1000 ms window.
+Fast human tapping tops out around 10-14 taps per second. The limits are
+generous on purpose: wrongly rejecting an honest round is worse than letting a
+slightly fast one through, because the replay already caps what taps can earn.
+The client must ignore a second touch within 25 ms of the previous one (a single
+`pointerdown` handler does this naturally).
+
+### Fail whole rounds, not partial ones
+A malformed or implausible log rejects the round outright with a reason, rather
+than trimming it and scoring the rest. Partial credit would make the behaviour
+unpredictable and turn the validator into something to probe.
+
+### What this does not stop
+A bot that knows the seed (everyone does; the server hands it out) can tap the
+exact centre of every bubble at plausible human speed and score the maximum. A
+perfect-replay bot cannot be stopped without running the game on the server.
+What the validator does stop: forged scores, impossible speeds, taps that do not
+land on a real bubble, double-scoring a bubble, and tampered or out-of-range
+logs. Leaderboard abuse of the perfect-bot kind is bounded by the maximum score
+of the schedule (about 75-90) and by per-player rate limits.

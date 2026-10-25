@@ -4,15 +4,16 @@ Every number here is an integer on purpose. The client (TypeScript) and the
 server (Python) must produce the *same* bubble schedule from the same seed, and
 integer math is the one thing both languages agree on exactly.
 
-Any change that alters a generated schedule (a phase value, a radius, a chance,
-the PRNG, the order of random draws) MUST bump CONFIG_VERSION and regenerate
+Any change that alters a generated schedule or how taps are scored (a phase
+value, a radius, a chance, the hit rules, the PRNG, the order of random draws)
+MUST bump CONFIG_VERSION and regenerate
 shared/spawn-vectors.json with scripts/generate_spawn_vectors.py. The game
 client must mirror the change in shared/spawn.js (or its TypeScript port).
 """
 
 from dataclasses import dataclass
 
-CONFIG_VERSION = 1
+CONFIG_VERSION = 2
 
 ROUND_DURATION_MS = 30_000
 
@@ -22,6 +23,15 @@ FIELD_SIZE = 10_000
 
 # First bubble appears this long after the round starts.
 INITIAL_DELAY_MS = 400
+
+# Tap rules. The client and the server score taps with the same hit test
+# (app/game/replay.py and shared/spawn.js), so the score on screen is the score
+# the server computes.
+# A bubble can always be hit within this radius, even once it has shrunk below it,
+# so late taps stay possible and tap targets stay finger-sized.
+HIT_MIN_RADIUS = 600
+# A bubble can still be hit this long after it expires, to absorb frame jitter.
+HIT_GRACE_MS = 50
 
 # Each gap between spawns is the phase interval, varied by up to this many
 # thousandths either way, so the rhythm is not a metronome.
@@ -72,6 +82,8 @@ def config_as_dict() -> dict:
         "field_size": FIELD_SIZE,
         "initial_delay_ms": INITIAL_DELAY_MS,
         "spawn_jitter_permille": SPAWN_JITTER_PERMILLE,
+        "hit_min_radius": HIT_MIN_RADIUS,
+        "hit_grace_ms": HIT_GRACE_MS,
         "phases": [
             {
                 "start_ms": p.start_ms,

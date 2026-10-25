@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONFIG, generateSchedule, mulberry32, radiusAt } from './spawn.js';
+import { CONFIG, generateSchedule, mulberry32, radiusAt, replay } from './spawn.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(readFileSync(join(here, 'spawn-vectors.json'), 'utf8'));
@@ -38,11 +38,19 @@ for (const { seed, index, at } of vectors.radius) {
   }
 }
 
+for (const { name, seed, taps, score, popped } of vectors.replays) {
+  const got = replay(
+    generateSchedule(seed),
+    taps.map(([t, x, y]) => ({ t, x, y })),
+  );
+  if (got.score !== score || !same(got.popped, popped)) fail(`replay "${name}" (seed ${seed})`);
+}
+
 if (failures > 0) {
   console.error(`${failures} check(s) failed: client and server have drifted.`);
   process.exit(1);
 }
 console.log(
   `OK: ${vectors.prng.length} prng, ${vectors.schedules.length} schedules, ` +
-    `${vectors.radius.length} radius probes match the server.`,
+    `${vectors.radius.length} radius probes, ${vectors.replays.length} replays match the server.`,
 );

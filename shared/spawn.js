@@ -13,11 +13,13 @@
 // Check it against the server's output with:  node shared/check-vectors.mjs
 
 export const CONFIG = {
-  version: 1,
+  version: 2,
   duration_ms: 30000,
   field_size: 10000,
   initial_delay_ms: 400,
   spawn_jitter_permille: 200,
+  hit_min_radius: 600,
+  hit_grace_ms: 50,
   phases: [
     { start_ms: 0, end_ms: 10000, spawn_interval_ms: 700, lifetime_ms: 1800 },
     { start_ms: 10000, end_ms: 20000, spawn_interval_ms: 500, lifetime_ms: 1400 },
@@ -86,4 +88,42 @@ export function radiusAt(bubble, timeMs) {
   const elapsed = timeMs - bubble.spawn_ms;
   if (elapsed < 0 || elapsed >= bubble.lifetime_ms) return 0;
   return Math.floor((bubble.radius * (bubble.lifetime_ms - elapsed)) / bubble.lifetime_ms);
+}
+
+/**
+ * The bubble a tap pops, or null for empty water. `popped` is a Set of bubble
+ * indexes already popped. Same rules as backend/app/game/replay.py:
+ *   - a bubble is poppable from spawn until hit_grace_ms after it expires;
+ *   - a tap hits within the bubble's current radius, but never less than
+ *     hit_min_radius;
+ *   - if several qualify, the most recently spawned wins (it is drawn on top).
+ */
+export function findHit(schedule, tap, popped) {
+  let hit = null;
+  for (const bubble of schedule) {
+    if (bubble.spawn_ms > tap.t) break;
+    if (popped.has(bubble.index)) continue;
+    if (tap.t >= bubble.spawn_ms + bubble.lifetime_ms + CONFIG.hit_grace_ms) continue;
+    const reach = Math.max(radiusAt(bubble, tap.t), CONFIG.hit_min_radius);
+    const dx = tap.x - bubble.x;
+    const dy = tap.y - bubble.y;
+    if (dx * dx + dy * dy <= reach * reach) hit = bubble;
+  }
+  return hit;
+}
+
+/** Score a tap log (in time order): { score, popped } with popped indexes in pop order. */
+export function replay(schedule, taps) {
+  const popped = new Set();
+  const order = [];
+  let score = 0;
+  for (const tap of taps) {
+    const bubble = findHit(schedule, tap, popped);
+    if (bubble !== null) {
+      popped.add(bubble.index);
+      order.push(bubble.index);
+      score += bubble.points;
+    }
+  }
+  return { score, popped: order };
 }
