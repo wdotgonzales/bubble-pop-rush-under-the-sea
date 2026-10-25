@@ -191,3 +191,57 @@ What the validator does stop: forged scores, impossible speeds, taps that do not
 land on a real bubble, double-scoring a bubble, and tampered or out-of-range
 logs. Leaderboard abuse of the perfect-bot kind is bounded by the maximum score
 of the schedule (about 75-90) and by per-player rate limits.
+
+## PR 3b: Submitting a round
+
+### A round is decided once, and retrying is safe
+`POST /rounds/{id}/submit` locks the round row (`SELECT ... FOR UPDATE`) for the
+whole call. Two simultaneous submits run one after the other, and the second
+finds a finished round. What it gets back depends on the outcome:
+- accepted: the same stored result again (200), so a lost response is harmless;
+- rejected: the same rejection again, so a refused round cannot be retried with
+  better taps;
+- expired: 410.
+
+This matters because the game queues rounds while offline and resends them.
+Idempotent accept is what makes "retry until it works" correct instead of risky.
+
+### Status codes tell the client whether to retry
+200 accepted. 404 unknown round or not yours (the two are deliberately
+indistinguishable, so round ids cannot be probed). 410 expired. 422 refused.
+409 the round was issued under an older game config, meaning the player needs
+the new build. Any 4xx means the round is finished for good and the client
+should drop it from its queue. Network errors, 429 and 5xx are the only retries.
+
+### Only the server's clock decides if a round was long enough
+A round cannot be submitted until it has lasted its full 30 seconds, minus 1
+second of slack, measured from the server's own `started_at`. The client's
+reported duration is stored for audit but never trusted. An honest client always
+passes: its timer starts after it receives the start response, so its submission
+reaches the server after at least 30 seconds. This is what stops a script
+from starting a round and instantly submitting a long tap log.
+
+### Best score: raise only on strictly higher, decided inside the UPDATE
+`UPDATE players SET best_score = :s ... WHERE best_score < :s` makes the
+comparison and the write one atomic step, so two rounds finishing together can
+never overwrite a better score with a worse one. A tie does not move
+`best_score_at`, so the player who reached a score first keeps the higher rank,
+matching the leaderboard rule. `best_round_id` always points at the round that
+produced the best.
+
+### Rejected rounds are kept, their tap logs are not
+A refused round is stored with its reason (`status = 'rejected'`) so abuse is
+visible in the data. The raw tap log is only stored for accepted rounds: a
+rejected log is attacker-controlled input, and persisting it adds nothing the
+reason does not already say.
+
+### Rate limiting submissions
+There is no separate limit on submit. Each round can be submitted once and rounds
+are limited to 10 starts per minute per player, so submissions are bounded by
+that. Malformed requests are rejected by the request schema before touching the
+database.
+
+### Not tested: true concurrency
+The locking is a few lines of standard PostgreSQL behaviour, but the suite uses
+sequential requests. A test with two real simultaneous connections would be the
+next addition if this ran at scale.
