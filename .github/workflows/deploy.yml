@@ -50,8 +50,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script_stop: true
           script: |
+            set -e
             cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush-under-the-sea
 
             # Pull latest code and config changes from GitHub
