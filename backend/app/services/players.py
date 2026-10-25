@@ -42,7 +42,8 @@ def get_rank(db: Session, player: Player) -> int | None:
     """1-based leaderboard rank, or None if the player has no score yet.
 
     Same ordering as the leaderboard: higher score first, and on a tie the
-    player who reached that score earlier ranks higher.
+    player who reached that score earlier ranks higher (then lower id, for a
+    dead heat).
     """
     if player.best_score <= 0 or player.best_score_at is None:
         return None
@@ -55,6 +56,13 @@ def get_rank(db: Session, player: Player) -> int | None:
                 and_(
                     Player.best_score == player.best_score,
                     Player.best_score_at < player.best_score_at,
+                ),
+                # Same score at the very same instant: fall back to id, exactly
+                # as the leaderboard view does, so the two always agree.
+                and_(
+                    Player.best_score == player.best_score,
+                    Player.best_score_at == player.best_score_at,
+                    Player.id < player.id,
                 ),
             )
         )
