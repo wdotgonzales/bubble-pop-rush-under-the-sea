@@ -245,3 +245,54 @@ database.
 The locking is a few lines of standard PostgreSQL behaviour, but the suite uses
 sequential requests. A test with two real simultaneous connections would be the
 next addition if this ran at scale.
+
+## PR 4: Leaderboard
+
+### A view, not a table
+`leaderboard_top` is a Postgres view over `players`, so the top 10 is computed on
+read and can never drift out of sync with the scores. A separate leaderboard
+table would need to be kept in step with every score change, and any bug in that
+upkeep would show up as a wrong public ranking. The existing
+`players_leaderboard_idx` (score descending, time ascending) serves the query,
+so it is an index scan of ten rows. Alembic does not track views, so the
+migration is handwritten and `alembic check` ignores it.
+
+### One ordering rule, in two places
+Higher score first; on a tie the player who reached it first; on a dead heat
+(same score at the same microsecond) the lower id. The view applies this with
+`ROW_NUMBER()`, and `get_rank` applies the same rule for players outside the top
+10. A test checks that the ranks in the list and the ranks from `get_rank`
+always agree, because a player seeing "3rd" on one screen and "4th" on another
+would look like a bug.
+
+### Only players with a score are ranked
+Anyone with a best score of 0 is not listed and has no rank (`null`). The game
+shows "play a round to get ranked" instead of inventing a last place.
+
+### The caller always learns their own standing
+`GET /leaderboard` returns the top 10 plus `me: {rank, best_score}`, even if the
+caller is 400th. Rows carry `is_me` so the game can highlight the player's own
+line without matching on names (display names are not unique).
+
+### Nothing identifying leaves the server
+Entries expose rank, display name, avatar URL and score. Not the internal player
+id, and never the Facebook id. Display names and avatars are player-supplied and
+cleaned on the way in (PR 1), but the avatar host risk recorded in PR 1 still
+applies to everyone who views the board.
+
+### Authenticated, not public
+The route needs a session token. The board is not secret, but every legitimate
+caller already has a token (the game over screen only appears after a round), it
+lets the response include `me` and `is_me`, and it keeps player names off the open
+internet and out of crawlers.
+
+### Always top 10, not paginated
+The concept doc shows a top-10 board. A `limit` parameter or pagination would be
+easy to add on the view, but nothing in the design needs it, and a fixed small
+query is the easiest to keep fast and to reason about.
+
+### Computed live, no caching
+Every request runs the query. For ten indexed rows this is cheaper than the
+invalidation logic a cache would need, and a new best score shows up on the very
+next request. If traffic ever justified a cache, a few seconds of `max-age` on
+the response would be the first step.
