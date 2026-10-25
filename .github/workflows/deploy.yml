@@ -44,25 +44,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger EC2 Deployment via SSH
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
           script: |
-              cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush-under-the-sea
-              
-              # 1. Pull latest code & config changes from GitHub
-              git pull origin main
-              
-              # 2. Log into GitHub Container Registry
-              echo "${{ secrets.CR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
-              
-              # 3. Pull latest built images
-              sudo docker compose -f docker-compose.prod.yml pull
-              
-              # 4. Start containers and wait for healthy database
-              sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait
-              
-              # 5. Run automated database migrations
-              sudo docker exec bubble_backend_prod alembic upgrade head
+            cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush-under-the-sea
+
+            # 1. Pull latest code and config changes from GitHub
+            git pull origin main
+
+            # 2. Log into GitHub Container Registry
+            echo "${{ secrets.CR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 3. Pull latest built images
+            sudo docker compose -f docker-compose.prod.yml pull
+
+            # 4. Start the database and wait until it is healthy
+            sudo docker compose -f docker-compose.prod.yml up -d db --wait
+
+            # 5. Run migrations with the NEW backend image, before the new app starts
+            sudo docker compose -f docker-compose.prod.yml run --rm backend alembic upgrade head
+
+            # 6. Start or restart everything and wait until the backend is healthy
+            sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait

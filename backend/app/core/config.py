@@ -1,29 +1,38 @@
-import os
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Determine current environment, defaulting to development if not set
-current_env = os.getenv("ENVIRONMENT", "development")
-
-# Dynamically pick the root .env file when running locally from backend/ folder, 
-# or standard .env when running inside Docker/production
-env_file_path = "../.env" if not os.getenv("ENVIRONMENT") or current_env == "development" else ".env"
-print(env_file_path)
 
 class Settings(BaseSettings):
-    POSTGRES_USER: str = "wdotgonzales"
-    POSTGRES_PASSWORD: str = "habbo123"
-    POSTGRES_HOST: str = "db"
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "bubble_pop_rush_db"
+
     ENVIRONMENT: str = "development"
+    SECRET_KEY: str
+    FB_APP_SECRET: str = ""  
+    
+    # Comma-separated. In production, set this to the origin your Instant Game
+    # is served from (check the Network tab once the game loads on Facebook).
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     @property
     def DATABASE_URL(self) -> str:
-        return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        password = quote_plus(self.POSTGRES_PASSWORD)
+        return (
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{password}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
-    model_config = SettingsConfigDict(
-        env_file=env_file_path,
-        extra="ignore"
-    )
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    # Local runs from backend/ read the repo-root .env. In Docker and CI the
+    # values come from real environment variables, which take priority.
+    model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
+
 
 settings = Settings()

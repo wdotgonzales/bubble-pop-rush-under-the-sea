@@ -7,11 +7,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-          - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wdotgonzales -d bubble_pop_rush_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,10 +21,24 @@ services:
     image: ghcr.io/wdotgonzales/bubble-pop-backend:latest
     container_name: bubble_backend_prod
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER:?POSTGRES_USER is not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set}
+      - POSTGRES_DB=${POSTGRES_DB:?POSTGRES_DB is not set}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - ENVIRONMENT=production
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is not set}
+      - FB_APP_SECRET=${FB_APP_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:?CORS_ORIGINS is not set}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: always
 
   frontend:
