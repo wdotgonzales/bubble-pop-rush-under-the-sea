@@ -3,6 +3,7 @@ import time
 from sqlalchemy import func, select
 
 from app.core.config import settings
+from app.core.nickname import generate_nickname
 from app.core.security import TOKEN_TTL_SECONDS, verify_session_token
 from app.models.player import Player
 from tests.helpers import make_signed_player_info, sign_payload
@@ -41,10 +42,50 @@ def test_response_never_leaks_the_facebook_id(client, fb_secret):
     assert "fb-secret-id-777" not in response.text
 
 
-def test_login_without_name_uses_default(client, fb_secret):
+def test_login_without_name_gets_a_generated_nickname(client, fb_secret):
     response = _login(client, fb_secret)
-    assert response.json()["player"]["display_name"] == "Diver"
+    name = response.json()["player"]["display_name"]
+    assert name == generate_nickname("fb-1001", settings.SECRET_KEY)
+    assert name != "Diver"
     assert response.json()["player"]["avatar_url"] is None
+
+
+def test_nickname_is_stable_across_logins(client, fb_secret):
+    first = _login(client, fb_secret).json()["player"]["display_name"]
+    second = _login(client, fb_secret).json()["player"]["display_name"]
+    assert first == second
+
+
+def test_different_players_usually_get_different_nicknames(client, fb_secret):
+    names = {
+        _login(client, fb_secret, player_id=f"fb-{i}").json()["player"]["display_name"]
+        for i in range(20)
+    }
+    assert len(names) >= 18
+
+
+def test_a_real_name_is_never_replaced_by_the_nickname(client, fb_secret):
+    _login(client, fb_secret, display_name="Ana")
+    again = _login(client, fb_secret).json()["player"]["display_name"]
+    assert again == "Ana"
+
+
+def test_a_player_still_named_diver_gets_a_nickname_on_next_login(client, db, fb_secret):
+    # A row created before nicknames existed carries the old placeholder.
+    old = Player(fb_player_id="fb-1001", display_name="Diver", best_score=40)
+    db.add(old)
+    db.commit()
+
+    player = _login(client, fb_secret).json()["player"]
+
+    assert player["display_name"] == generate_nickname("fb-1001", settings.SECRET_KEY)
+    assert player["best_score"] == 40  # nothing else is touched
+
+
+def test_a_client_sent_name_still_overrides_the_nickname(client, fb_secret):
+    _login(client, fb_secret)
+    renamed = _login(client, fb_secret, display_name="Ana").json()["player"]
+    assert renamed["display_name"] == "Ana"
 
 
 def test_second_login_reuses_the_same_player(client, db, fb_secret):
