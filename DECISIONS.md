@@ -296,3 +296,57 @@ Every request runs the query. For ten indexed rows this is cheaper than the
 invalidation logic a cache would need, and a new best score shows up on the very
 next request. If traffic ever justified a cache, a few seconds of `max-age` on
 the response would be the first step.
+
+## PR 5: Maintenance and handoff
+
+### Cleanup is a command, run by cron, not a scheduler inside the app
+`python -m app.jobs.cleanup` does one pass and exits. The alternative, a background
+scheduler inside the web process, would run once per worker (so several times over
+if the app is ever scaled), die with the web process, and add a dependency. A
+command is trivial to run by hand, to test, and to put in a crontab. The cost is that
+someone must add one cron line on the server; the README gives it verbatim. Every
+step is idempotent, so a missed or doubled run is harmless.
+
+### Retention
+- Unsubmitted rounds past their expiry become `expired`, and are deleted 7 days
+  later. They never produced a score, so nothing refers to them.
+- Accepted and rejected rounds are never deleted: they are the audit trail for the
+  leaderboard.
+- The stored tap log (the bulky part, up to ~400 taps) is dropped after 30 days,
+  except for each player's best round, which stays as the evidence behind their
+  rank. Score, status and timings stay on every round.
+
+### nginx is recreated on every deploy
+nginx's config is a bind-mounted single file. When `git pull` replaces that file,
+the running container keeps seeing the old inode and silently serves a stale
+config. This caused a real 404 on the first production deploy (every API call
+arrived as `/api/api/...`). Reloading nginx does not help, because the container's
+view of the file is what is stale. Recreating the container fixes it and costs about a second
+of downtime per deploy, which is acceptable for this project.
+
+### README as the entry point
+The README is written for someone who has never seen the project: what it is, how
+to run it, how to try the full flow without a game client (the bot and signature
+scripts), how deployment works, and what is knowingly not solved.
+
+## Known limits and what I would do with more time
+
+- **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
+  speed scores the maximum. Preventing it needs server-side gameplay. The damage is bounded by the
+  maximum score of a schedule (~75-90) and the start rate limit.
+- **Replay of a leaked signature.** Within its 10-minute window a captured Facebook signature can
+  create a session for that player. Fix: pass a server-issued nonce to
+  `getSignedPlayerInfoAsync(nonce)` and check it came from us, once.
+- **No token revocation.** A session token is valid until it expires (1 hour). Fix: a token
+  version on the player row, checked on each request.
+- **Avatar hosts.** Any https avatar is accepted, which lets a player see the IP of everyone who views
+  the leaderboard. Fix: allowlist Facebook's image hosts once real URLs are known.
+- **Concurrency is not tested concurrently.** The single-use and best-score guarantees rest on a row lock
+  and a conditional UPDATE. A test with two real simultaneous connections is the next test to add.
+- **No database backups.** The production database lives in a Docker volume on one host. A nightly
+  `pg_dump` to object storage would be the first operational improvement.
+- **Single host.** Everything runs on one EC2 instance. That is a deliberate fit for the scale of this
+  project, not an oversight.
+- **Config is duplicated across languages.** The game rules live in Python and JavaScript, and golden
+  vectors keep them honest. A build step that generates one from the other would remove the
+  duplication.
