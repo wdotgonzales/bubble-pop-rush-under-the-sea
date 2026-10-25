@@ -1,11 +1,13 @@
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Determine which env file to use based on system environment or default to development
+# Determine current environment, defaulting to development if not set
 current_env = os.getenv("ENVIRONMENT", "development")
 
-# Choose path dynamically
-env_file_path = "../.env" if current_env == "development" else ".env"
+# Dynamically pick the root .env file when running locally from backend/ folder, 
+# or standard .env when running inside Docker/production
+env_file_path = "../.env" if not os.getenv("ENVIRONMENT") or current_env == "development" else ".env"
+print(env_file_path)
 
 class Settings(BaseSettings):
     POSTGRES_USER: str = "wdotgonzales"
