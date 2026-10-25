@@ -449,6 +449,46 @@ matching the Docker build, because the lint plugins' peer ranges lag behind ESLi
 The game itself, the real screens, the offline queue and sharing. This PR is the
 foundation they stand on.
 
+## PR 8: Generated nicknames
+
+### Why
+Facebook Instant Games SDK 8.0 no longer gives a game the player's name or photo, and
+games may not store them on their own servers. Names and photos only appear inside
+overlays that Meta controls. Without a name from somewhere, every leaderboard row would
+read `Diver`. So the server gives each player a friendly nickname of its own.
+
+### What
+`generate_nickname(fb_player_id, secret)` returns `<Adjective><SeaCreature><3 digits>`,
+for example `BrightTurtle482`. The word lists have 32 entries each, so a digest byte maps
+onto a list with no bias, and the digits make about a million combinations.
+
+- **Derived, not random.** The name comes from HMAC-SHA256 under `SECRET_KEY`, so the same
+  player always gets the same name, and the name carries nothing that can be traced back to
+  the Facebook id.
+- **Stored once.** It is written when the player is created and then lives in
+  `display_name` like any other name. Rotating the secret later renames nobody.
+- **Not unique, on purpose.** The leaderboard identifies rows by rank, so two players with
+  the same nickname are harmless. Enforcing uniqueness would add a retry loop and a failure
+  mode to sign-in for no visible benefit.
+- **Fits the design.** The Figma leaderboard shows names such as SeaExplorer and PearlDiver;
+  these read the same way.
+
+### Rules at sign-in
+- The client sent a name: it is used, as before.
+- No name, new player: the nickname is stored.
+- No name, existing player still called `Diver` (a row from before this change): the next
+  sign-in replaces the placeholder with the nickname. This runs in the same atomic upsert
+  and no data migration is needed.
+- No name, existing player with any other name: left alone. A real name is never replaced.
+
+The database default stays `Diver`; it is only a placeholder now.
+
+### Rejected
+- **Fall back to SDK 7.1** so names exist: that SDK is legacy and its availability is
+  uncertain, and the policy against storing names would still apply.
+- **Guest-1234 style names:** work, but read as anonymous. The themed names make the
+  leaderboard feel like part of the game.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human

@@ -1,7 +1,8 @@
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.nickname import PLACEHOLDER_NAME
 from app.models.player import Player
 
 
@@ -10,12 +11,16 @@ def upsert_player(
     fb_player_id: str,
     display_name: str | None,
     avatar_url: str | None,
+    default_name: str | None = None,
 ) -> Player:
     """Create the player on first sign-in, or refresh them on later ones.
 
     One atomic INSERT ... ON CONFLICT, so two simultaneous first logins for the
     same Facebook player cannot create two rows or raise a unique violation.
     Name and avatar are only overwritten when the client sent a usable value.
+    When no name was sent, default_name (the generated nickname) is used for a new
+    player, and replaces the old "Diver" placeholder on an existing one. A name the
+    player actually has is never replaced.
     best_score and friends are never touched here; only submit raises them.
     """
     values: dict = {"fb_player_id": fb_player_id}
@@ -23,6 +28,12 @@ def upsert_player(
     if display_name:
         values["display_name"] = display_name
         update["display_name"] = display_name
+    elif default_name:
+        values["display_name"] = default_name
+        update["display_name"] = case(
+            (Player.display_name == PLACEHOLDER_NAME, default_name),
+            else_=Player.display_name,
+        )
     if avatar_url:
         values["avatar_url"] = avatar_url
         update["avatar_url"] = avatar_url

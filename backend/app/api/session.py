@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_player
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.nickname import generate_nickname
 from app.core.profile import clean_avatar_url, clean_display_name
 from app.core.security import (
     TOKEN_TTL_SECONDS,
@@ -42,6 +43,7 @@ def create_session(body: SessionRequest, db: Session = Depends(get_db)):
         fb_player_id,
         clean_display_name(body.display_name),
         clean_avatar_url(body.avatar_url),
+        default_name=generate_nickname(fb_player_id, settings.SECRET_KEY),
     )
     token = create_session_token(str(player.id), settings.SECRET_KEY)
     return SessionResponse(
