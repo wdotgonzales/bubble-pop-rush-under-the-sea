@@ -1,23 +1,49 @@
 import { useState, useEffect } from 'react'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+
+async function fetchHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`)
+    const body = await res.json().catch(() => ({}))
+    return {
+      status: res.ok ? 'ok' : 'error',
+      data: `HTTP ${res.status}\n${JSON.stringify(body, null, 2)}`,
+    }
+  } catch (err) {
+    return { status: 'error', data: 'Error connecting to backend: ' + err.message }
+  }
+}
+
 function App() {
-  const [data, setData] = useState("Loading backend data...")
+  const [result, setResult] = useState({ status: 'loading', data: 'Checking backend...' })
+
+  const recheck = () => {
+    setResult({ status: 'loading', data: 'Checking backend...' })
+    fetchHealth().then(setResult)
+  }
 
   useEffect(() => {
-    // Uses the environment variable injected by Vite
-    console.log(import.meta.env.VITE_API_BASE_URL)
-    const apiUrl = `${import.meta.env.VITE_API_BASE_URL || '/api'}/`
-
-    fetch(apiUrl)
-      .then(res => res.json())
-      .then(result => setData(JSON.stringify(result, null, 2)))
-      .catch(err => setData("Error connecting to backend: " + err.message))
+    let active = true
+    fetchHealth().then((r) => {
+      if (active) setResult(r)
+    })
+    return () => {
+      active = false
+    }
   }, [])
 
+  const color = result.status === 'ok' ? 'green' : result.status === 'error' ? 'crimson' : 'gray'
+
   return (
-    <div style={{ padding: "20px", fontFamily: "monospace" }}>
+    <div style={{ padding: '20px', fontFamily: 'monospace' }}>
       <h2>Game Challenge - Backend Connection Test</h2>
-      <pre>{data}</pre>
+      <p>
+        GET <code>{API_BASE}/health</code>:{' '}
+        <strong style={{ color }}>{result.status}</strong>
+      </p>
+      <pre>{result.data}</pre>
+      <button onClick={recheck}>Check again</button>
     </div>
   )
 }
