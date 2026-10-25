@@ -15,4 +15,3 @@ class User(Base):
     # Relationships
     sessions = relationship("GameSession", back_populates="user", cascade="all, delete")
     leaderboards = relationship("Leaderboard", back_populates="user", cascade="all, delete")
-    inventories = relationship("UserInventory", back_populates="user", cascade="all, delete")
