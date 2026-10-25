@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Index, Integer, Text, Uuid, func, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -29,8 +39,17 @@ class Player(Base):
     # Only ever raised by the submit route (PR 3).
     best_score: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     best_score_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # Plain column for now. PR 2 adds the foreign key once `rounds` exists.
-    best_round_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # The accepted round that produced best_score. players and rounds point at
+    # each other, so this FK is created after both tables exist (use_alter).
+    best_round_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "rounds.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="players_best_round_fk",
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
