@@ -67,3 +67,12 @@ def db():
 def client():
     with TestClient(app) as c:
         yield c
+
+FB_TEST_SECRET = "test-app-secret"
+
+
+@pytest.fixture
+def fb_secret(monkeypatch):
+    """Give the app a known Facebook app secret so tests can sign player info."""
+    monkeypatch.setattr(settings, "FB_APP_SECRET", FB_TEST_SECRET)
+    return FB_TEST_SECRET
