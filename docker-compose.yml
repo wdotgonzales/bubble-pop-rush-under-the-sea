@@ -33,7 +33,9 @@ services:
       - game-net
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: game_frontend
     restart: always
     networks:
