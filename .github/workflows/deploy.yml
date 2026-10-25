@@ -53,20 +53,23 @@ jobs:
           script: |
             cd /home/${{ secrets.EC2_USER }}/bubble-pop-rush-under-the-sea
 
-            # 1. Pull latest code and config changes from GitHub
+            # Pull latest code and config changes from GitHub
             git pull origin main
 
-            # 2. Log into GitHub Container Registry
+            # Log into GitHub Container Registry
             echo "${{ secrets.CR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 3. Pull latest built images
+            # Pull latest built images
             sudo docker compose -f docker-compose.prod.yml pull
 
-            # 4. Start the database and wait until it is healthy
+            # Start the database and wait until it is healthy
             sudo docker compose -f docker-compose.prod.yml up -d db --wait
 
-            # 5. Run migrations with the NEW backend image, before the new app starts
+            # Run migrations with the NEW backend image, before the new app starts
             sudo docker compose -f docker-compose.prod.yml run --rm backend alembic upgrade head
 
-            # 6. Start or restart everything and wait until the backend is healthy
+            # Start or restart everything and wait until the backend is healthy
             sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait
+
+            # Clean up unused Docker images and reclaim disk space
+            sudo docker image prune -f 
