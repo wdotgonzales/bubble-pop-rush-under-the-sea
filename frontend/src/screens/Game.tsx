@@ -52,7 +52,14 @@ function Screens({ layout, viewport, data, flow }: ScreensProps) {
 
   if (screen.name === 'play') {
     const { round, practice } = screen
-    return <PlayScreen key={round.round_id} round={round} onDone={(result) => finish(round, result, practice)} />
+    return (
+      <PlayScreen
+        key={round.round_id}
+        round={round}
+        onDone={(result) => finish(round, result, practice)}
+        onGoHome={goHome}
+      />
+    )
   }
 
   if (screen.name === 'over') {

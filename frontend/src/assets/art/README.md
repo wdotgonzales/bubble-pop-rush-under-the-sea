@@ -5,7 +5,7 @@ Images the screens use. Bitmaps are small JPEG/WebP; the characters and icons ar
 | File | What | Figma node |
 | --- | --- | --- |
 | `bg-portrait.jpg` | Underwater background, phone | `37:4372` (M01 Start screen) |
-| `bg-landscape-start.jpg` | Underwater background with centre column, desktop start | `6:2688` (D01) |
+| `bg-landscape-start.jpg` | Underwater background, desktop start (the centre column's edges are blended away, see DECISIONS.md) | `6:2688` (D01) |
 | `bg-landscape-over.jpg` | Desktop game over background, includes the big shell | `19:287` (D03) |
 | `shell-portrait.webp` | Pearlescent shell behind the phone game over panel | `39:178` (M03) |
 | `turtle-start.svg` | Sea turtle on the start screen | `37:4544` |

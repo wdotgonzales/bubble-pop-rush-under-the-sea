@@ -71,6 +71,7 @@ function PreviewScreens({ params }: { params: URLSearchParams }) {
       <PlayScreen
         round={{ seed: toCount(params.get('seed'), 12345), field_width: field.width, field_height: field.height }}
         onDone={nothing}
+        onGoHome={nothing}
       />
     )
   }
