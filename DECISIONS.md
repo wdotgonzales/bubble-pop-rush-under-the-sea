@@ -1117,9 +1117,12 @@ this endpoint, and `me` is typed as always present there, which is true because 
 
 ## The Dashboard
 
-A DASHBOARD button on the start screen opens a page of its own with the top ten players and a HOME button back
-to the start screen. DIVE IN is smaller to make room, but it is still the larger and brighter of the two
-(cream pearl against blue), so what to tap first is as clear as before.
+A LEADERBOARDS button on the start screen opens a page of its own with the top ten players and a HOME button
+back to the start screen. DIVE IN is smaller to make room, but it is still the larger and brighter of the two
+(cream pearl against blue), so what to tap first is as clear as before. The player sees the word "Leaderboards"
+on the button and as the page's title; the code, the tests and this section call the page the Dashboard.
+"Leaderboards" is a long word, so the button is a little wider than DASHBOARD was, the title is a size smaller
+(the phone header borrows a few pixels of the panel's side padding to keep the turtle beside it).
 
 ### Where the numbers come from
 The Dashboard asks `GET /leaderboard?page=1&page_size=10` itself, every time it opens, instead of reusing the
@@ -1159,7 +1162,7 @@ for each way):
 - HOME clears the start screen's problem line and practice link, as GO HOME does. A player who still cannot start a
   round finds out again on the next DIVE IN.
 - The board answer's type now has the paging fields, and `me` can be null (the public, signed-out answer).
-- Layout is checked by tests, not only by eye: DASHBOARD is under DIVE IN and smaller, both buttons share a centre
+- Layout is checked by tests, not only by eye: the Leaderboards button is under DIVE IN and smaller, both buttons share a centre
   line, the problem line and the practice link stay inside the screen below them, and on the wide Dashboard the
   left column stays clear of the board.
 - `?preview=dashboard` (with `&board=loading|error|empty` and `&layout=`) shows the screen with sample data, for

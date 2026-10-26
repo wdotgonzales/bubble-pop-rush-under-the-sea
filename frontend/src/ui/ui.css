@@ -1150,13 +1150,15 @@
   padding: 18px 16px 18px;
 }
 
+/* "Leaderboards" is a long word: the header may use a little of the panel's side padding to keep the turtle beside it. */
 .dash-header {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% + 16px);
+  margin: 0 -8px;
 }
 
 .dash-title {

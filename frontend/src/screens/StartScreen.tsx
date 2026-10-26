@@ -82,7 +82,7 @@ export default function StartScreen({
             disabled={starting}
             onClick={onDashboard}
           >
-            DASHBOARD
+            LEADERBOARDS
           </PearlButton>
         </div>
       )}
