@@ -5,7 +5,6 @@ import {
   LEGACY_MUTED_KEY,
   clampVolume,
   gainFor,
-  isSilent,
   parseAudioSettings,
 } from '../src/audio/settings'
 
@@ -81,19 +80,5 @@ describe('gainFor', () => {
       expect(g).toBeGreaterThanOrEqual(last)
       last = g
     }
-  })
-})
-
-describe('isSilent', () => {
-  it('is not silent while anything can be heard', () => {
-    expect(isSilent(DEFAULT_AUDIO)).toBe(false)
-    expect(isSilent({ ...DEFAULT_AUDIO, musicOn: false })).toBe(false)
-    expect(isSilent({ ...DEFAULT_AUDIO, sfxOn: false })).toBe(false)
-  })
-
-  it('is silent when both are off, or both are turned right down', () => {
-    expect(isSilent({ ...DEFAULT_AUDIO, musicOn: false, sfxOn: false })).toBe(true)
-    expect(isSilent({ ...DEFAULT_AUDIO, musicVolume: 0, sfxVolume: 0 })).toBe(true)
-    expect(isSilent({ musicOn: true, musicVolume: 0, sfxOn: false, sfxVolume: 1 })).toBe(true)
   })
 })

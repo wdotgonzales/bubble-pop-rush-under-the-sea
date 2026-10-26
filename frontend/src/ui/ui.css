@@ -330,19 +330,6 @@
   border-radius: 50%;
 }
 
-.settings-muted {
-  position: absolute;
-  left: 50%;
-  top: 12%;
-  width: 4px;
-  height: 76%;
-  margin-left: -2px;
-  border-radius: 2px;
-  background: #fff;
-  box-shadow: 0 0 0 1.5px rgb(0 30 60 / 0.65);
-  transform: rotate(45deg);
-}
-
 /* ---------- Start screen ---------- */
 
 .game-title {
