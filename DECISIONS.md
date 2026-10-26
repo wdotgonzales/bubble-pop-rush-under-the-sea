@@ -875,7 +875,8 @@ before merging.
 Background music on every screen, a countdown beep and a "go" sound, a soft sound on every button, a tune
 when the game over screen appears (and a brighter one for a new best), and the old pops. The gear in the
 corner now opens a settings window instead of just muting: a switch and a volume slider for the music, and
-the same for the sound effects. The choices are remembered. A slash on the gear means nothing can be heard.
+the same for the sound effects. The choices are remembered. (The gear used to get a slash across it when nothing could be heard; it was
+taken off, and the gear now looks the same whatever the settings are.)
 
 ### One audio engine for the whole visit
 Before, each round made its own audio context and closed it at the end, so nothing could play across

@@ -55,10 +55,3 @@ export function gainFor(volume: number): number {
   const v = clampVolume(volume, 0)
   return v * v
 }
-
-/** True when nothing can be heard, so the gear can show it. */
-export function isSilent(settings: AudioSettings): boolean {
-  const music = settings.musicOn && settings.musicVolume > 0
-  const effects = settings.sfxOn && settings.sfxVolume > 0
-  return !music && !effects
-}
