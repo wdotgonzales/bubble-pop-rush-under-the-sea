@@ -13,6 +13,8 @@ interface Props {
   layout: Layout
   bestScore: Load<number>
   onPlay: () => void
+  /** Opens the Dashboard, the top-10 page. It waits while a round is being fetched. */
+  onDashboard?: () => void
   /** Offered under the notice when a real round cannot be started: a round that needs no server. */
   onPractice?: () => void
   /** A round is being fetched: the button waits so a second tap cannot start another. */
@@ -25,6 +27,7 @@ export default function StartScreen({
   layout,
   bestScore,
   onPlay,
+  onDashboard,
   onPractice,
   starting = false,
   notice = null,
@@ -68,6 +71,21 @@ export default function StartScreen({
           {starting ? 'DIVING…' : 'DIVE IN!'}
         </PearlButton>
       </div>
+
+      {onDashboard && (
+        <div className="start-action" style={{ left: g.dashboard.left, top: g.dashboard.top }}>
+          <PearlButton
+            variant="aqua"
+            width={g.dashboard.width}
+            height={g.dashboard.height}
+            fontSize={g.dashboard.fontSize}
+            disabled={starting}
+            onClick={onDashboard}
+          >
+            DASHBOARD
+          </PearlButton>
+        </div>
+      )}
 
       {notice && (
         <p className="start-notice" role="status" style={g.notice}>

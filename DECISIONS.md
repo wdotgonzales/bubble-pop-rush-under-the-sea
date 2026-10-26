@@ -1115,6 +1115,62 @@ Facebook session. Everything else still needs one.
 The game still shows only the top 10. A "see more" screen in the client is a separate piece of work on top of
 this endpoint, and `me` is typed as always present there, which is true because the game always signs in.
 
+## The Dashboard
+
+A DASHBOARD button on the start screen opens a page of its own with the top ten players and a HOME button back
+to the start screen. DIVE IN is smaller to make room, but it is still the larger and brighter of the two
+(cream pearl against blue), so what to tap first is as clear as before.
+
+### Where the numbers come from
+The Dashboard asks `GET /leaderboard?page=1&page_size=10` itself, every time it opens, instead of reusing the
+board the game loaded at the start. That board can be minutes old and is meant for the game over screen; the
+Dashboard is the one place someone goes to see who is ahead right now. There is a loading state for the moment it
+takes, an error with "Try again", and an empty state. An answer that arrives after the player has left is thrown
+away.
+
+Whether to send the session token depends on whether the player is signed in (`fetchDashboardBoard`, with a test
+for each way):
+- **Signed in:** with the token, so the player's own row is highlighted and, outside the top ten, their place is
+  pinned under the list, as on the game over screen.
+- **Not signed in** (the game opened outside Facebook, or sign-in failed): without it. The board is public (see
+  "Leaderboard paging"), and asking with a token would first wait up to ten seconds for a Facebook sign-in that
+  never comes, leaving the Dashboard on its loading state. This is the same rule as everywhere else in the game:
+  never wait on something that may not answer. It also means anyone who opens the game's address in a plain
+  browser can still see the board.
+
+### The screen
+- **Phone:** the same glass panel as the game over screen, with the turtle and the title on top, the board, how
+  many players are on it, and HOME at the bottom.
+- **Wide:** the game over screen's shell picture, with the title, the turtle, the player count and HOME in the left
+  column and the board on the right. The board is wider than the game over one (357 against 280 design pixels):
+  names are generated ("SnappyWhale482") and are longer than the names in the design, and there is room. Its rows
+  are 35 instead of 37 pixels high so ten rows and the player's own row under them all fit without scrolling.
+- **Medals:** gold, silver and bronze pearls for places 1 to 3. The game over board is as the design drew it, so
+  the medals are only on the Dashboard (`medals` on the shared board component).
+- **Motion:** the rows rise into place one after another, like bubbles, and the turtle swims in place. Both stop
+  for visitors who ask their device for less motion, like the other animations in the game.
+- **Count:** "128 divers on the board" comes from `total` in the response, so it needs nothing extra from the server.
+
+### Smaller choices
+- The Dashboard is a screen in the game's flow (`{ name: 'dashboard' }`), not a window on top of the start screen,
+  so HOME is one transition and a score that arrives while someone is looking at the board cannot bring a game
+  over screen back over it (there is a test for that, as for GO HOME).
+- It cannot be opened while a round is being fetched, like GO HOME, because that fetch is about to change the screen.
+- HOME clears the start screen's problem line and practice link, as GO HOME does. A player who still cannot start a
+  round finds out again on the next DIVE IN.
+- The board answer's type now has the paging fields, and `me` can be null (the public, signed-out answer).
+- Layout is checked by tests, not only by eye: DASHBOARD is under DIVE IN and smaller, both buttons share a centre
+  line, the problem line and the practice link stay inside the screen below them, and on the wide Dashboard the
+  left column stays clear of the board.
+- `?preview=dashboard` (with `&board=loading|error|empty` and `&layout=`) shows the screen with sample data, for
+  design review.
+
+### Not done
+- Paging beyond the first ten. The API supports it and the client's `getLeaderboard` takes `page`, but the brief
+  asked for the top ten, so the screen shows ten.
+- Refreshing while the Dashboard stays open. It is current when it opens; HOME and then DASHBOARD again, or Try
+  again, fetch it again.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human

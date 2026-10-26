@@ -8,6 +8,12 @@ export function bestScoreLabel(best: Load<number>): string {
   return best.data > 0 ? `Best Score: ${best.data}` : 'No score yet'
 }
 
+/** The line under the Dashboard's board: how many players have a score. Empty until there is one. */
+export function diversLabel(total: number): string {
+  if (total <= 0) return ''
+  return total === 1 ? '1 diver on the board' : `${total.toLocaleString('en-US')} divers on the board`
+}
+
 /** The line under the score on the game over screen. */
 export function personalBestLabel(score: number, bestScore: number, isNewBest: boolean): string {
   return isNewBest ? `New Best: ${score}!` : `Personal Best: ${bestScore}`

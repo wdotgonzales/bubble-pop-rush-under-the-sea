@@ -10,7 +10,7 @@ import { practiceRound } from '../game/practice'
 import { takeUsable, type Prefetched } from '../game/prefetch'
 import type { Services } from '../services'
 import type { RoundStart } from '../types'
-import { homeScreen, settleScreen, type FlowScreen, type View } from './flow'
+import { dashboardScreen, homeScreen, settleScreen, type FlowScreen, type View } from './flow'
 import { OUTDATED_BUILD_NOTICE, startFailureLabel } from './labels'
 
 export type { FlowScreen, SaveState } from './flow'
@@ -110,6 +110,12 @@ export function useRoundFlow(services: Services | null, onSaved: () => void) {
     setScreen(homeScreen())
   }, [])
 
+  /** Open the Dashboard. Not while a round is being fetched, for the same reason as going home. */
+  const openDashboard = useCallback(() => {
+    if (busy.current) return
+    setScreen(dashboardScreen())
+  }, [])
+
   /** Play a round that needs no server. Its score is shown but never sent. */
   const beginPractice = useCallback((view: View) => {
     lastView.current = view
@@ -137,5 +143,5 @@ export function useRoundFlow(services: Services | null, onSaved: () => void) {
     [services, prefetch],
   )
 
-  return { screen, starting, begin, beginPractice, goHome, finish }
+  return { screen, starting, begin, beginPractice, goHome, openDashboard, finish }
 }

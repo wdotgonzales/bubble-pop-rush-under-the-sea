@@ -9,6 +9,7 @@ import type { Leaderboard } from '../types'
 import type { Layout } from '../ui/layout'
 import { usePickedLayout } from '../ui/usePickedLayout'
 import CardPreview from './CardPreview'
+import DashboardScreen from './DashboardScreen'
 import GameOverScreen from './GameOverScreen'
 import PlayScreen from './PlayScreen'
 import StartScreen from './StartScreen'
@@ -25,7 +26,10 @@ function boardFor(name: string | null): Load<Leaderboard> {
     case 'error':
       return { status: 'error', message: 'preview' }
     case 'empty':
-      return { status: 'ready', data: { entries: [], me: { rank: null, best_score: 0 } } }
+      return {
+        status: 'ready',
+        data: { entries: [], page: 1, page_size: 10, total: 0, total_pages: 0, me: { rank: null, best_score: 0 } },
+      }
     default:
       return { status: 'ready', data: SAMPLE_BOARD }
   }
@@ -33,12 +37,12 @@ function boardFor(name: string | null): Load<Leaderboard> {
 
 /**
  * Design review: the screens with sample data and no network.
- *   ?preview=start | over | play | card   which screen (play runs a real round from &seed=, with no network;
+ *   ?preview=start | over | dashboard | play | card   which screen (play runs a real round from &seed=, with no network;
  *                                           card is the picture shared from the game over screen, for &score=)
  *   &layout=portrait | landscape   force a layout on any window
  *   &score=22&best=42&new=1   numbers on the game over screen
  *   &home=0 hides GO HOME; &share=1 shows SHARE (in the game it is offered only inside Facebook)
- *   &board=loading | error | empty   leaderboard states
+ *   &board=loading | error | empty   leaderboard states (game over and dashboard)
  *   &notice=...&practice=1   the start screen's problem line and the practice link under it
  *   &settings=1   open the settings window on top of the screen
  */
@@ -82,6 +86,10 @@ function PreviewScreens({ params }: { params: URLSearchParams }) {
     return <CardPreview score={toCount(params.get('score'), 57)} />
   }
 
+  if (params.get('preview') === 'dashboard') {
+    return <DashboardScreen layout={layout} board={boardFor(params.get('board'))} onRetry={nothing} onHome={nothing} />
+  }
+
   if (params.get('preview') === 'over') {
     return (
       <GameOverScreen
@@ -103,6 +111,7 @@ function PreviewScreens({ params }: { params: URLSearchParams }) {
       layout={layout}
       bestScore={{ status: 'ready', data: toCount(params.get('best'), 42) }}
       onPlay={nothing}
+      onDashboard={nothing}
       onPractice={params.get('practice') === '1' ? nothing : undefined}
       notice={params.get('notice')}
     />

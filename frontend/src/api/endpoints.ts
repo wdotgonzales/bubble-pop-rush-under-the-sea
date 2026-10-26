@@ -9,6 +9,27 @@ import type {
 } from '../types'
 import type { ApiClient } from './client'
 
+export interface LeaderboardQuery {
+  /** 1-based. Left out, the server gives the first page. */
+  page?: number
+  /** Left out, the server gives 10. */
+  pageSize?: number
+  /**
+   * Send the session token, which adds the player's own row and standing. The board itself is public,
+   * so a caller that is not signed in asks without it rather than wait for a sign-in. Default true.
+   */
+  auth?: boolean
+}
+
+/** The address of a leaderboard page, with only the parts that were asked for. */
+export function leaderboardPath({ page, pageSize }: LeaderboardQuery = {}): string {
+  const params = new URLSearchParams()
+  if (page !== undefined) params.set('page', String(page))
+  if (pageSize !== undefined) params.set('page_size', String(pageSize))
+  const query = params.toString()
+  return query ? `/leaderboard?${query}` : '/leaderboard'
+}
+
 /** One typed function per backend route. */
 export function createEndpoints(client: ApiClient) {
   return {
@@ -39,7 +60,8 @@ export function createEndpoints(client: ApiClient) {
         body: { taps, client_duration_ms: clientDurationMs },
       }),
 
-    getLeaderboard: () => client.request<Leaderboard>('GET', '/leaderboard'),
+    getLeaderboard: (query: LeaderboardQuery = {}) =>
+      client.request<Leaderboard>('GET', leaderboardPath(query), { auth: query.auth ?? true }),
   }
 }
 

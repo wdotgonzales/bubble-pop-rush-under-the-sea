@@ -1140,12 +1140,133 @@
   }
 }
 
+/* ---------- Dashboard ---------- */
+
+.dash-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 18px;
+}
+
+.dash-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dash-title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  text-align: center;
+  color: transparent;
+  background-image: linear-gradient(180deg, #c0ffce 0%, #84f4bc 30%, #48d5d1 57%, #3d9ff0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* A filter, not text-shadow: a shadow would paint over the gradient fill. */
+  filter: drop-shadow(1.5px 3px 2px rgb(0 27 77 / 0.87)) drop-shadow(0 0 5px rgb(76 249 255 / 0.44));
+}
+
+/* The turtle swims in place, a little up and down, like the bubbles bob. */
+.dash-turtle {
+  display: block;
+  flex: none;
+  animation: dash-swim 4.6s ease-in-out infinite;
+}
+
+@keyframes dash-swim {
+  0%,
+  100% {
+    transform: translateY(-3px) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(4px) rotate(1.5deg);
+  }
+}
+
+.dash-count {
+  flex: none;
+  min-height: 24px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-weight: 900;
+  font-size: 19px;
+  line-height: 24px;
+  color: var(--c-best-score);
+  text-shadow: 0.7px 2px 1px #001e34;
+}
+
+/* The wide board with the player's own row under ten others: a little less height per row. */
+.board-landscape.board-dense .board-heading {
+  padding-bottom: 6px;
+}
+
+.board-landscape.board-dense .board-row {
+  height: 35px;
+}
+
+/* A badge as tall as its row would touch the outline round the player's own row. */
+.board-landscape.board-dense .rank-badge {
+  width: 29px;
+  height: 29px;
+  font-size: 21px;
+}
+
+.board-landscape.board-dense .rank-badge[data-wide='true'] {
+  font-size: 13px;
+}
+
+/* First, second and third place get a gold, silver and bronze pearl. */
+.rank-badge[data-medal='1'] {
+  border-color: #fff2b8;
+  background: linear-gradient(180deg, #fff6c2 0%, #f9d85e 36%, #e6a22a 70%, #f8de92 100%);
+  color: #6f4204;
+  text-shadow: 0 1px 0 rgb(255 244 200 / 0.85);
+}
+
+.rank-badge[data-medal='2'] {
+  border-color: #f4faff;
+  background: linear-gradient(180deg, #fbfdff 0%, #d4deea 36%, #98a9bf 70%, #dfe7f1 100%);
+  color: #35485f;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.85);
+}
+
+.rank-badge[data-medal='3'] {
+  border-color: #ffe2c6;
+  background: linear-gradient(180deg, #ffe2c4 0%, #e9a972 36%, #b86d38 70%, #f0c19a 100%);
+  color: #54280c;
+  text-shadow: 0 1px 0 rgb(255 232 208 / 0.8);
+}
+
+/* The rows rise into place one after another, like bubbles. */
+.board-animate .board-row:not(.board-row-skeleton) {
+  animation: row-rise 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes row-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
 /* ---------- Motion preferences ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   .bubble,
   .sparkle,
-  .skeleton-bar {
+  .skeleton-bar,
+  .dash-turtle,
+  .board-animate .board-row {
     animation: none;
   }
 

@@ -53,7 +53,14 @@ export interface LeaderboardEntry {
 }
 
 export interface Leaderboard {
-  /** Up to 10, best first. Empty when nobody has scored yet. */
+  /** One page, best first: up to `page_size` rows. Empty when nobody has scored yet. */
   entries: LeaderboardEntry[]
-  me: { rank: number | null; best_score: number }
+  /** Which page this is (1-based) and how big pages are. */
+  page: number
+  page_size: number
+  /** Players with a score over all pages, and how many pages that makes (0 when nobody has scored). */
+  total: number
+  total_pages: number
+  /** The requesting player's own standing. Null when the request was not signed in: the board is public. */
+  me: { rank: number | null; best_score: number } | null
 }

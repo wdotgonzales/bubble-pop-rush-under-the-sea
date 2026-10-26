@@ -32,7 +32,7 @@ export default function Scene({ layout, screen, children }: Props) {
     transform: `translate(-50%, -50%) scale(${scale})`,
   }
   const stageBackground =
-    layout === 'landscape' ? (screen === 'over' ? art.bgLandscapeOver : art.bgLandscapeStart) : null
+    layout === 'landscape' ? (screen === 'start' ? art.bgLandscapeStart : art.bgLandscapeOver) : null
 
   return (
     <div className="scene" data-layout={layout} data-screen={screen} style={sceneStyle}>
