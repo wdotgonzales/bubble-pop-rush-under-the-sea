@@ -437,14 +437,25 @@ sign-in is unaffected. The client therefore treats name and photo as optional: i
 them when an older SDK offers them and sends nothing otherwise. What the leaderboard
 shows as a name is a separate decision (see the next PR).
 
-### Production builds point at the production API
-Vite reads `frontend/.env` in every build, so the first Facebook zip had the local
-`http://localhost:8000` baked in. The fix is in the build, not in a second env file: `npm run build` runs Vite through
-`scripts/build.mjs`, which sets `VITE_API_BASE_URL` to an empty string. Variables that exist
-when Vite starts win over `.env` files, and `config.ts` treats empty as unset, so a build uses
-its default, the public API. `frontend/.env` stays the one file for local development, with
-nothing to flip before a build. `npm run pack` also refuses to zip a bundle that contains a
-localhost address. The production address lives only in `config.ts`.
+### The backend address is configuration, never code
+The first Facebook zip had the local `http://localhost:8000` baked in, because Vite reads `frontend/.env`
+in every build. That was first fixed by giving `config.ts` the production address as a default and having the
+build ignore `.env`. It worked, but it put the production address in the source, and the build quietly ignored
+the file a developer would expect to control it. It now works the usual way:
+- `VITE_API_BASE_URL` is the only source of the address. `config.ts` has no default.
+- `frontend/.env` is for `npm run dev` (localhost). `frontend/.env.production` is for builds: Vite reads it
+  instead of `.env` when building, so nothing is changed by hand between development and a Facebook build.
+  Both are ignored by git. `frontend/.env.example` is committed and explains them.
+- Docker and CI pass it in as a build argument (`secrets.VITE_API_BASE_URL` in `deploy.yml`), because the image
+  build has no env file (`Dockerfile.dockerignore` keeps them out of the image).
+- A build with no address stops with a message (`scripts/build.mjs`) rather than producing a game that cannot
+  reach its backend. A game started without one reports it instead of guessing (`createServices`).
+- `npm run pack` still refuses to zip a bundle that contains a localhost address, so a build made from the
+  wrong env file cannot be uploaded to Facebook by mistake.
+Trade-off: the address is still readable in the shipped JavaScript, as it must be: a browser game calls the API
+from the player's device. What is gone is the address in the repository, and a build that silently uses an
+address nobody chose. The cost is one more setup step (a repository variable and an env file), documented in the
+README.
 
 ### TypeScript is pinned to 6
 A fresh install pulls TypeScript 7, which `typescript-eslint` does not support yet, so

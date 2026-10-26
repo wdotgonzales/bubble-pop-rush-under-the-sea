@@ -1,6 +1,7 @@
 import { createApiClient } from './api/client'
 import { createEndpoints, type Endpoints } from './api/endpoints'
 import { SessionManager } from './api/session'
+import { MISSING_API_URL_MESSAGE } from './api/baseUrl'
 import { API_BASE_URL } from './config'
 import { ScoreQueue } from './game/pending'
 import { createPendingStore } from './game/pendingStore'
@@ -19,6 +20,7 @@ export function createServices(
   search: string = window.location.search,
   isDev: boolean = import.meta.env.DEV,
 ): Services {
+  if (!API_BASE_URL) throw new Error(MISSING_API_URL_MESSAGE)
   const platform = choosePlatform(search, isDev)
   const client = createApiClient({
     baseUrl: API_BASE_URL,
