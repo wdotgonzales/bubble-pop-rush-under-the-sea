@@ -19,7 +19,7 @@
 /*
  * The strip along the top. The field starts below it (game/fit.ts), so no bubble is ever
  * behind these. PlayScreen sets its left and width to line it up with the playing column.
- * Only the sound button takes taps.
+ * Only the settings button takes taps.
  */
 .hud {
   position: absolute;

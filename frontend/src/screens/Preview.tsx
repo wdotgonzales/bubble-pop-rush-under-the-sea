@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import SoundProvider from '../audio/SoundProvider'
+import { useSound } from '../audio/useSound'
 import { chooseField } from '../game/field'
 import { HUD_BAND_PX } from '../game/hud'
 import { SAMPLE_BOARD } from '../previewData'
@@ -35,12 +37,30 @@ function boardFor(name: string | null): Load<Leaderboard> {
  *   &score=22&best=42&new=1   numbers on the game over screen
  *   &board=loading | error | empty   leaderboard states
  *   &notice=...&practice=1   the start screen's problem line and the practice link under it
+ *   &settings=1   open the settings window on top of the screen
  */
 export default function Preview({ params }: { params: URLSearchParams }) {
+  return (
+    <SoundProvider platform={null} ready={false}>
+      {params.has('settings') && <OpenSettings />}
+      <PreviewScreens params={params} />
+    </SoundProvider>
+  )
+}
+
+/** Opens the settings window as soon as it is drawn, for design review. */
+function OpenSettings() {
+  const { openSettings } = useSound()
+  useEffect(() => {
+    openSettings()
+  }, [openSettings])
+  return null
+}
+
+function PreviewScreens({ params }: { params: URLSearchParams }) {
   const forced = params.get('layout')
   const override: Layout | null = forced === 'portrait' || forced === 'landscape' ? forced : null
   const layout = usePickedLayout(override)
-  const [muted, setMuted] = useState(false)
   const nothing = () => undefined
   // A round with no server: the field is chosen once, from the window it was opened in.
   const [field] = useState(() => chooseField(window.innerWidth, window.innerHeight, HUD_BAND_PX))
@@ -49,8 +69,6 @@ export default function Preview({ params }: { params: URLSearchParams }) {
     return (
       <PlayScreen
         round={{ seed: toCount(params.get('seed'), 12345), field_width: field.width, field_height: field.height }}
-        muted={muted}
-        onToggleMute={() => setMuted((m) => !m)}
         onDone={nothing}
       />
     )
@@ -75,8 +93,6 @@ export default function Preview({ params }: { params: URLSearchParams }) {
     <StartScreen
       layout={layout}
       bestScore={{ status: 'ready', data: toCount(params.get('best'), 42) }}
-      muted={muted}
-      onToggleMute={() => setMuted((m) => !m)}
       onPlay={nothing}
       onPractice={params.get('practice') === '1' ? nothing : undefined}
       notice={params.get('notice')}

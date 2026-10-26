@@ -1,11 +1,14 @@
+import SoundProvider from '../audio/SoundProvider'
+import { useSound } from '../audio/useSound'
 import { mapLoad } from '../state/load'
 import { saveLabel } from '../state/labels'
-import { useGameData } from '../state/useGameData'
-import { useMuted } from '../state/useMuted'
+import { useGameData, type GameData } from '../state/useGameData'
+import { useGameOverSound } from '../state/useGameOverSound'
 import { useArtReady } from '../state/useArtReady'
 import { useRoundFlow } from '../state/useRoundFlow'
 import { useScoreSync } from '../state/useScoreSync'
 import { useServices } from '../state/useServices'
+import type { Layout } from '../ui/layout'
 import { usePickedLayout } from '../ui/usePickedLayout'
 import { useViewport } from '../ui/useViewport'
 import GameOverScreen from './GameOverScreen'
@@ -18,8 +21,7 @@ export default function Game() {
   const data = useGameData(services, error)
   const layout = usePickedLayout()
   const viewport = useViewport()
-  const [muted, toggleMuted] = useMuted(services?.platform ?? null, data.boot === 'ready')
-  const { screen, starting, begin, beginPractice, finish } = useRoundFlow(services, data.refresh)
+  const flow = useRoundFlow(services, data.refresh)
   useScoreSync(services, data.boot === 'ready')
   const artReady = useArtReady()
 
@@ -28,17 +30,29 @@ export default function Game() {
   // already showing. It waits for the pictures only, never for Facebook (see useArtReady).
   if (!artReady) return <div className="boot-blank" />
 
+  return (
+    <SoundProvider platform={services?.platform ?? null} ready={data.boot === 'ready'}>
+      <Screens layout={layout} viewport={viewport} data={data} flow={flow} />
+    </SoundProvider>
+  )
+}
+
+interface ScreensProps {
+  layout: Layout
+  viewport: ReturnType<typeof useViewport>
+  data: GameData & { refresh: () => void }
+  flow: ReturnType<typeof useRoundFlow>
+}
+
+function Screens({ layout, viewport, data, flow }: ScreensProps) {
+  const { screen, starting, begin, beginPractice, finish } = flow
+  const { engine } = useSound()
+
+  useGameOverSound(screen, engine)
+
   if (screen.name === 'play') {
     const { round, practice } = screen
-    return (
-      <PlayScreen
-        key={round.round_id}
-        round={round}
-        muted={muted}
-        onToggleMute={toggleMuted}
-        onDone={(result) => finish(round, result, practice)}
-      />
-    )
+    return <PlayScreen key={round.round_id} round={round} onDone={(result) => finish(round, result, practice)} />
   }
 
   if (screen.name === 'over') {
@@ -67,8 +81,6 @@ export default function Game() {
     <StartScreen
       layout={layout}
       bestScore={mapLoad(data.me, (me) => me.player.best_score)}
-      muted={muted}
-      onToggleMute={toggleMuted}
       onPlay={() => void begin(viewport)}
       onPractice={canPractice ? () => beginPractice(viewport) : undefined}
       starting={starting}

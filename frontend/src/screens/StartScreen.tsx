@@ -12,8 +12,6 @@ import { START } from './geometry'
 interface Props {
   layout: Layout
   bestScore: Load<number>
-  muted: boolean
-  onToggleMute: () => void
   onPlay: () => void
   /** Offered under the notice when a real round cannot be started: a round that needs no server. */
   onPractice?: () => void
@@ -26,8 +24,6 @@ interface Props {
 export default function StartScreen({
   layout,
   bestScore,
-  muted,
-  onToggleMute,
   onPlay,
   onPractice,
   starting = false,
@@ -42,8 +38,6 @@ export default function StartScreen({
 
       <SettingsButton
         size={g.settings.size}
-        muted={muted}
-        onToggle={onToggleMute}
         style={{ position: 'absolute', left: g.settings.left, top: g.settings.top }}
       />
 
