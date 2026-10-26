@@ -3,6 +3,9 @@ import { ApiError, NetworkError } from './api/client'
 import { isRoundCompatible, roundField } from './api/guard'
 import type { Services } from './services'
 
+/** The parts of the services the check walks through. */
+export type DiagnosticServices = Pick<Services, 'platform' | 'api' | 'session'>
+
 export type StepStatus = 'pending' | 'running' | 'ok' | 'error'
 
 export interface Step {
@@ -37,7 +40,7 @@ export function describeError(error: unknown): string {
  * shows exactly which hop is broken.
  */
 export async function runDiagnostics(
-  services: Services,
+  services: DiagnosticServices,
   report: (steps: Step[]) => void,
 ): Promise<boolean> {
   const steps: Step[] = LABELS.map(([id, label]) => ({ id, label, status: 'pending', detail: '' }))

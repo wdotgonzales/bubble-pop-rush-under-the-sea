@@ -22,6 +22,7 @@ export const START = {
     ] satisfies SparkleSpec[],
     settings: { left: 318, top: 24, size: 48 },
     notice: { left: 24, top: 716, width: 342 },
+    practice: { left: 24, top: 752, width: 342 },
   },
   landscape: {
     title: { left: 387, top: 100, width: 250 },
@@ -33,7 +34,8 @@ export const START = {
       { x: 0, y: 60, size: 13 },
     ] satisfies SparkleSpec[],
     settings: { left: 614, top: 10, size: 37 },
-    notice: { left: 362, top: 516, width: 300 },
+    notice: { left: 332, top: 504, width: 360 },
+    practice: { left: 332, top: 526, width: 360 },
   },
 } as const
 

@@ -64,6 +64,8 @@ describe('saveLabel and the outdated notice', () => {
   it('say what is happening to the score', () => {
     expect(saveLabel('saving')).toBe('Saving score…')
     expect(saveLabel('failed')).toBe('Score not saved')
+    expect(saveLabel('queued')).toBe('Will save later')
+    expect(saveLabel('practice')).toBe('Practice round')
   })
 
   it('tells the player to reload an outdated build', () => {

@@ -23,7 +23,25 @@ export function startFailureLabel(error: unknown): string {
   return "Couldn't start a round. Please try again."
 }
 
-/** The line where the personal best goes, while the score is on its way to the server or did not arrive. */
-export function saveLabel(status: 'saving' | 'failed'): string {
-  return status === 'saving' ? 'Saving score…' : 'Score not saved'
+/** What can be said about a score that has not been confirmed by the server. */
+export type UnsavedStatus = 'saving' | 'queued' | 'failed' | 'practice'
+
+/**
+ * The line where the personal best goes while the score is on its way to the server, or when
+ * it was not (or will not be) counted.
+ */
+export function saveLabel(status: UnsavedStatus): string {
+  switch (status) {
+    case 'saving':
+      return 'Saving score…'
+    case 'queued':
+      return 'Will save later'
+    case 'failed':
+      return 'Score not saved'
+    case 'practice':
+      return 'Practice round'
+  }
 }
+
+/** The button under a failed start that plays a round without the server. */
+export const PRACTICE_LABEL = 'Play a practice round'

@@ -427,6 +427,35 @@
   position: absolute;
 }
 
+/* The way out of a failed start: a plain underlined link under the notice. */
+.start-practice {
+  position: absolute;
+  margin: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  text-align: center;
+  font-family: var(--font-body);
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--c-best-score);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow: 0.5px 1px 1px #001e34;
+  cursor: pointer;
+}
+
+.start-practice:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.start-practice:focus-visible {
+  outline: 2px solid var(--c-best-score);
+  outline-offset: 2px;
+}
+
 .start-notice {
   position: absolute;
   margin: 0;
@@ -913,4 +942,52 @@
   .settings-btn {
     transition: none;
   }
+}
+
+/* ---------- If the game stops unexpectedly ---------- */
+
+.crash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: #00294a;
+  color: var(--c-best-score);
+  font-family: var(--font-body);
+  text-align: center;
+}
+
+.crash-text {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.crash-button {
+  min-height: 48px;
+  padding: 0 28px;
+  border: 2px solid var(--c-button-border);
+  border-radius: 24px;
+  background: #0c4f78;
+  color: inherit;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.crash-button:focus-visible {
+  outline: 3px solid var(--c-best-score);
+  outline-offset: 2px;
+}
+
+/* Shown for a moment while the pictures load, before the first screen. */
+.boot-blank {
+  position: fixed;
+  inset: 0;
+  background: #00294a;
 }

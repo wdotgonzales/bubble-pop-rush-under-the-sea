@@ -5,12 +5,15 @@ import './index.css'
 import './ui/ui.css'
 import './ui/play.css'
 import App from './App'
+import ErrorBoundary from './ui/ErrorBoundary'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('Missing #root element')
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
