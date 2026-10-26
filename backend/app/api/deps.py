@@ -22,12 +22,7 @@ def _unauthorized() -> HTTPException:
     )
 
 
-def get_current_player(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    db: Session = Depends(get_db),
-) -> Player:
-    if credentials is None:
-        raise _unauthorized()
+def _player_for(credentials: HTTPAuthorizationCredentials, db: Session) -> Player:
     try:
         subject = verify_session_token(credentials.credentials, settings.SECRET_KEY)
         player_id = uuid.UUID(subject)
@@ -37,3 +32,27 @@ def get_current_player(
     if player is None:
         raise _unauthorized()
     return player
+
+
+def get_current_player(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> Player:
+    if credentials is None:
+        raise _unauthorized()
+    return _player_for(credentials, db)
+
+
+def get_optional_player(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> Player | None:
+    """The signed-in player, or None for a request that sent no credentials at all.
+
+    Only a missing header is allowed through. A header that is present but wrong or expired
+    is still a 401, exactly as on every other route: the game relies on that 401 to know it
+    must sign in again, so it must not turn into a silent anonymous request.
+    """
+    if credentials is None:
+        return None
+    return _player_for(credentials, db)

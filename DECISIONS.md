@@ -1060,6 +1060,61 @@ Sharing is a nice extra, so it never gets in the way of the game.
   Facebook, so this was left out.
 - A different message for a new personal best. It is a one-line change in `shareText` if wanted.
 
+## Leaderboard paging
+
+`GET /leaderboard` takes `page` (1-based, default 1) and `page_size` (default 10, at most 50) and returns that
+page, best first, with `page`, `page_size`, `total` (players with a score) and `total_pages` next to the entries.
+With no parameters it returns exactly what it always did, the top 10 and the caller's `me`, so the game needed no
+change and keeps working through the deploy in either order.
+
+### Page numbers, not a cursor
+The board is read by people flicking through pages ("page 3 of 7"), so the API speaks in pages and says how many
+there are. A cursor ("everything after this player") never shifts when scores change, but it cannot jump to page
+5 and cannot say how many pages there are. The cost of pages is that a score landing while someone reads can move
+a player across a page boundary, so a player can be seen twice or missed between two requests. For a leaderboard
+that is acceptable, because the next refresh is right, and it is the usual price of paging.
+
+### The rank is the position
+The order never ties (score, then who got there first, then id), so a player's rank is just their position in it:
+the page's offset plus their place on the page. No window function over the whole table is needed for a page. The
+query is `ORDER BY best_score DESC, best_score_at, id LIMIT n OFFSET m` over `players`, which `get_rank` already
+agrees with, and which the existing `players_leaderboard_idx` serves. Checked against a real PostgreSQL: pages
+of 5 over 22 players with ties and dead heats show every player exactly once, in the same order as the old
+view, with the index used.
+- Deep pages cost more, because the database still walks past the skipped rows. `page_size` is capped at 50 and
+  `page` at 10,000 (a limit no real board gets near, and one that keeps the offset a number the database accepts),
+  so one request can never ask for an unreasonable amount of work. Past that, a cursor is the answer.
+- A page past the end is an empty list with a 200, not a 404: the board has not failed, it is just shorter than
+  the caller thought.
+- Bad values (`page=0`, `page_size=51`, `page=abc`) get FastAPI's 422 before reaching the database.
+- `me` is always the caller's real rank, whatever page was asked for, so the game can show "you are 400th" while
+  the player is looking at page 1.
+
+### The `leaderboard_top` view is no longer read
+The API now orders `players` directly, so nothing reads the view from PR 4. It is left in place rather than
+dropped: removing it is a migration that changes the production database for no benefit to a player, and the
+existing test that checks it still passes. A later migration can drop it.
+
+### Public to read, personal when signed in
+Reading the leaderboard needs no sign-in, so anyone can open it in a browser, and a page can show it without a
+Facebook session. Everything else still needs one.
+- A request with no `Authorization` header gets the board with `me: null` and `is_me: false` on every row.
+- A request with a valid session gets `me` and its own row flagged, as before. The game always sends one, so it
+  sees no difference.
+- A request whose token is wrong or expired is still a 401, not an anonymous 200. The game uses that 401 to know it
+  must sign in again; letting it fall through to the public view would hide a broken session behind a board that
+  looks fine but has no "you". Only a missing header is let through (`get_optional_player` in `api/deps.py`).
+- What is public is what every player could already see: display names, avatar addresses, scores and ranks. No ids
+  and no Facebook ids are returned (a test checks this without a session). The cost is that anyone can read the
+  board, and that anyone can ask for it often; the page size cap bounds the work of one request, and Cloudflare
+  sits in front, but there is no rate limit of our own.
+- The avatar-host limit in "Known limits" applies a little more now: a hostile avatar address is requested by
+  whoever views the board, signed in or not.
+
+### Not done
+The game still shows only the top 10. A "see more" screen in the client is a separate piece of work on top of
+this endpoint, and `me` is typed as always present there, which is true because the game always signs in.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
