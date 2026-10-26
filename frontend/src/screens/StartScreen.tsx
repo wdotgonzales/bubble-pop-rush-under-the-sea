@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { bestScoreLabel } from '../state/labels'
+import { PRACTICE_LABEL, bestScoreLabel } from '../state/labels'
 import type { Load } from '../state/types'
 import { art } from '../ui/art'
 import BubbleField from '../ui/BubbleField'
@@ -15,6 +15,8 @@ interface Props {
   muted: boolean
   onToggleMute: () => void
   onPlay: () => void
+  /** Offered under the notice when a real round cannot be started: a round that needs no server. */
+  onPractice?: () => void
   /** A round is being fetched: the button waits so a second tap cannot start another. */
   starting?: boolean
   /** A short problem to show under the button, for example no connection. */
@@ -27,6 +29,7 @@ export default function StartScreen({
   muted,
   onToggleMute,
   onPlay,
+  onPractice,
   starting = false,
   notice = null,
 }: Props) {
@@ -76,6 +79,12 @@ export default function StartScreen({
         <p className="start-notice" role="status" style={g.notice}>
           {notice}
         </p>
+      )}
+
+      {onPractice && (
+        <button type="button" className="start-practice" style={g.practice} disabled={starting} onClick={onPractice}>
+          {PRACTICE_LABEL}
+        </button>
       )}
     </Scene>
   )

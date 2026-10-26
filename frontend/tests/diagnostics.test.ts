@@ -6,12 +6,12 @@ import { SessionManager } from '../src/api/session'
 import { describeError, runDiagnostics, type Step } from '../src/diagnostics'
 import { createMockPlatform } from '../src/platform/mock'
 import { ApiError, NetworkError } from '../src/api/client'
-import type { Services } from '../src/services'
+import type { DiagnosticServices } from '../src/diagnostics'
 import { fakeFetch, json } from './helpers'
 
 const PLAYER = { id: 'p1', display_name: 'Diver', avatar_url: null, best_score: 7 }
 
-function services(handler: Parameters<typeof fakeFetch>[0], signature: string | null = 'sig.payload'): Services {
+function services(handler: Parameters<typeof fakeFetch>[0], signature: string | null = 'sig.payload'): DiagnosticServices {
   const platform = createMockPlatform({
     signature,
     name: 'Diver',
@@ -53,7 +53,7 @@ function happyPath(configVersion = CONFIG.version, field = { width: 10000, heigh
   }
 }
 
-async function run(s: Services) {
+async function run(s: DiagnosticServices) {
   let last: Step[] = []
   const ok = await runDiagnostics(s, (steps) => {
     last = steps

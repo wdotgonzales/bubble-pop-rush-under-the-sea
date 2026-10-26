@@ -1,5 +1,5 @@
 import type { PreloadTask } from './preload'
-import { artUrls } from './ui/art'
+import { artCache, artUrls } from './ui/art'
 
 // Fonts the screens use, as CSS font shorthands. Loading them before the first
 // screen avoids a flash of fallback text in the title.
@@ -14,16 +14,17 @@ const FONTS = [
 ]
 
 function loadImage(url: string): PreloadTask {
-  return () =>
-    new Promise<void>((resolve) => {
+  return async () => {
+    // Download it once and keep the copy, so a screen opened later (or with no connection) can
+    // still draw it. Then decode that copy so the first paint does not stall on a large picture.
+    await artCache.keep(url)
+    await new Promise<void>((resolve) => {
       const image = new Image()
-      image.onload = () => {
-        // decode() keeps the first paint from stalling on a large picture.
-        void image.decode().then(resolve, resolve)
-      }
+      image.onload = () => void image.decode().then(resolve, resolve)
       image.onerror = () => resolve()
-      image.src = url
+      image.src = artCache.resolve(url)
     })
+  }
 }
 
 function loadFont(spec: string): PreloadTask {

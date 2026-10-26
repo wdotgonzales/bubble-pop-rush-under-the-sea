@@ -34,6 +34,7 @@ function boardFor(name: string | null): Load<Leaderboard> {
  *   &layout=portrait | landscape   force a layout on any window
  *   &score=22&best=42&new=1   numbers on the game over screen
  *   &board=loading | error | empty   leaderboard states
+ *   &notice=...&practice=1   the start screen's problem line and the practice link under it
  */
 export default function Preview({ params }: { params: URLSearchParams }) {
   const forced = params.get('layout')
@@ -77,6 +78,8 @@ export default function Preview({ params }: { params: URLSearchParams }) {
       muted={muted}
       onToggleMute={() => setMuted((m) => !m)}
       onPlay={nothing}
+      onPractice={params.get('practice') === '1' ? nothing : undefined}
+      notice={params.get('notice')}
     />
   )
 }
