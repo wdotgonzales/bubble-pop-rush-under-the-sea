@@ -1,8 +1,16 @@
 import type { Platform } from '../platform'
+import { withTimeout } from './timeout'
 import type { Player, SessionResponse } from '../types'
 
 /** Sign in again this long before the token actually expires. */
 const REFRESH_MARGIN_MS = 60_000
+
+/**
+ * How long to wait for Facebook to hand over the signed player info. Inside Facebook it takes a
+ * moment; outside it (the game's address opened in a plain browser) the SDK never answers, and
+ * without a limit the game would wait for ever instead of saying it could not sign in.
+ */
+const SIGNATURE_TIMEOUT_MS = 10_000
 
 export interface SessionDeps {
   platform: Pick<Platform, 'getSignedPlayerInfo' | 'getPlayer'>
@@ -13,6 +21,7 @@ export interface SessionDeps {
   ) => Promise<SessionResponse>
   /** Injected for tests. */
   now?: () => number
+  signatureTimeoutMs?: number
 }
 
 /**
@@ -61,7 +70,11 @@ export class SessionManager {
 
   private async doSignIn(): Promise<SessionResponse> {
     const info = this.deps.platform.getPlayer()
-    const signature = await this.deps.platform.getSignedPlayerInfo()
+    const signature = await withTimeout(
+      this.deps.platform.getSignedPlayerInfo(),
+      this.deps.signatureTimeoutMs ?? SIGNATURE_TIMEOUT_MS,
+      'Facebook did not answer. Open the game from Facebook.',
+    )
     const session = await this.deps.createSession(signature, info.name, info.photoUrl)
     this.token = session.token
     this.expiresAt = (this.deps.now ?? Date.now)() + session.expires_in * 1000

@@ -73,4 +73,24 @@ describe('session manager', () => {
     expect(manager.player).toBe(null)
     expect(await manager.getToken()).toBe('token-for-sig-2')
   })
+
+  it('stops waiting when Facebook never answers, and can sign in again later', async () => {
+    let calls = 0
+    const manager = new SessionManager({
+      signatureTimeoutMs: 20,
+      platform: {
+        getPlayer: () => ({ name: null, photoUrl: null }),
+        // The first call never answers (not running inside Facebook); the second does.
+        getSignedPlayerInfo: () => (++calls === 1 ? new Promise<string>(() => undefined) : Promise.resolve('sig')),
+      },
+      createSession: async (signature): Promise<SessionResponse> => ({
+        token: `token-for-${signature}`,
+        expires_in: 3600,
+        player: PLAYER,
+      }),
+    })
+    const error = await rejection(manager.getToken())
+    expect((error as Error).message).toContain('Facebook did not answer')
+    expect(await manager.getToken()).toBe('token-for-sig')
+  })
 })

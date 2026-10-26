@@ -813,6 +813,23 @@ The screens wait for the pictures before the first draw (a plain sea-coloured sc
 Facebook's own loading screen in the game), so a screen is never redrawn from the network address to the
 in-memory one while the player is looking at it.
 
+### A blank screen found after deploying, and what it taught
+The first deploy of PR 11 showed an empty sea-coloured page when the game's address was opened in a plain
+browser. The cause was my own: the screens waited for the "booting" step to finish before drawing, and that
+step starts with Facebook's `initializeAsync()`, which never answers outside Facebook. So the wait never ended.
+The same missing limit hid a second, older problem: signing in also asks Facebook for the signed player
+info, so outside Facebook "DIVING..." would have waited for ever instead of failing.
+
+Two fixes, both about never waiting on something that may not answer:
+- The screens now wait only for the pictures (which come from our own server), and at most 3 seconds
+  (`useArtReady`). They no longer depend on Facebook at all.
+- Signing in gives Facebook 10 seconds to hand over the signed player info (`withTimeout`, `api/timeout.ts`).
+  After that the start fails with a clear reason, a practice round is offered, and a later tap tries again.
+
+The lesson is general: any wait on the platform needs a limit, and "the first screen" must not be behind one.
+The test that would have caught it is to open the deployed address in a normal browser, which I had not done
+before merging.
+
 ### Smaller choices
 - A start is not attempted when the browser says it is offline, so the reason appears at once instead of
   after the 10-second timeout.

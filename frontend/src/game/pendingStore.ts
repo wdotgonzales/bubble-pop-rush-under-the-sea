@@ -4,6 +4,7 @@
 // copy is what survives a page closed while offline. Reading merges both; the queue drops
 // repeats by round id.
 
+import { withTimeout } from '../api/timeout'
 import type { Platform } from '../platform'
 import type { PendingScore, PendingStore } from './pending'
 
@@ -28,22 +29,6 @@ export function browserStorage(): LocalStorageLike | null {
   } catch {
     return null
   }
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timed out')), ms)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error: unknown) => {
-        clearTimeout(timer)
-        reject(error instanceof Error ? error : new Error(String(error)))
-      },
-    )
-  })
 }
 
 export function createPendingStore(
