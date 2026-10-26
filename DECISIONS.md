@@ -659,8 +659,8 @@ gear in the corner mutes it, and the choice is kept.
 - `GameStub` and its styles are gone.
 
 ### Known limits
-- **A failed submit is not kept.** If all four tries fail, the score is lost when the page
-  closes. The next PR adds the offline queue, which keeps the round and sends it later.
+- **A failed submit is not kept.** (Fixed in PR 11: the score is now written down before it is
+  sent and kept until the server has answered.)
 - **No Figma frame for the playfield was available**, so the HUD and effects follow the style of
   the Start and Game Over screens. The canvas is drawn on the CPU every frame; with at most
   about ten bubbles on screen that is cheap, but I have not measured it on a low-end phone.
@@ -741,6 +741,99 @@ would see version 3 and do the same.
   stage, scaled to fit. Only the round uses the whole window.
 - **The hit radius is in units.** The smallest tappable bubble is 900 units, which is 34 px on a
   phone and 41 px on a desktop.
+
+## PR 11: When the network is not there
+
+### What goes wrong in real use
+A 30-second game is played on a phone, often on a bus or on a weak connection. The three failures
+that matter are: the score cannot be sent (the player has just earned it and it vanishes), a new round
+cannot be started (the button does nothing), and the page itself crashes (a blank screen). Each now has
+a defined behaviour instead of a silent one.
+
+### The score is written down before it is sent
+`ScoreQueue` (`game/pending.ts`) owns every finished round until the server has answered:
+
+| What the send did | What happens |
+|---|---|
+| accepted | forget it, show the server's score, refresh the board |
+| 404, 409, 410, 422 | the server decided; sending again cannot change that, so forget it ("Score not saved") |
+| network error, 429, 5xx | keep it and try again later ("Will save later") |
+| round past its 24-hour expiry | forget it; the server would refuse it |
+| an error nobody expected | keep it (losing a score is worse than one pointless retry) |
+
+This is the same contract `submitWithRetry` already followed (PR 10); the queue adds memory. The submit
+is idempotent on the server (PR 5), so sending a score twice, from two tabs or after a crash between
+"sent" and "forgotten", can never count it twice. That property is what makes "keep trying" safe.
+
+- **Write first, then send.** The write starts before the request, so a page closed mid-send still
+  has the score next time. Writes are chained so the stored list is always the latest.
+- **Where it is stored.** In the platform's player data (Facebook's, which follows the player) AND in
+  this device's `localStorage`. Facebook's call needs a connection, which is exactly when a score is
+  waiting; the local copy is what survives closing the page offline. Reading merges both and drops
+  repeats by round id. Either can fail (private mode, blocked storage, offline) without breaking the
+  game; the in-memory queue still works for that visit.
+- **When it is retried.** Right after a round (the same 0.8 / 2.5 / 6 second tries as before), then
+  when the browser reports it is back online, when the game becomes visible again, every 30 seconds
+  while anything is waiting, and once at start-up for scores left by an earlier visit. A retry sends
+  the oldest score first and stops at the first one that cannot get through, so a dead connection costs
+  one request, not ten.
+- **Stored data is not trusted.** What is read back is validated field by field (integers, at most 400
+  taps, not expired); damaged entries are skipped. At most 10 scores are kept; if there are more, the
+  oldest are dropped.
+- **The screen follows.** The game over screen shows "Saving score…", then "Will save later" if the
+  tries ran out, then the real result if it gets through while the player is still there. If the score
+  gets through after the player has moved on, the best score on the start screen is refreshed.
+
+### Practice mode
+If a round cannot be started (no connection, server down, rate limit, the game could not sign in), the
+start screen offers "Play a practice round" under the reason. It uses the same shared schedule and the
+same engine as a real round with a random local seed, so it plays identically, but nothing is sent: its
+game over says "Practice round" and it cannot reach the leaderboard. A practice round cannot be used to
+cheat for the obvious reason that its score is never submitted; the server never hears of it. PLAY AGAIN
+after a practice round asks for a real round, so the player is back on the board as soon as the connection is.
+
+### The next round is fetched ahead
+While the game over screen is showing, the next round is requested. PLAY AGAIN then starts at once, and
+works even if the connection dropped in between. A fetched round is used only if it is under 5 minutes old
+and its field still fits the window (within 10% per side, so a turned phone gets a new one). Otherwise it
+is thrown away and a new one is requested. The cost is one extra start request per game, well inside the
+10 per minute allowed, and an unplayed round now and then (harmless: it is never submitted).
+
+### The pictures stay in memory
+Found by testing offline: after the network was cut, the Game Over screen showed a broken-image icon where
+the turtle should be and had lost its background. The game already downloaded every picture at start-up,
+but that is only a hint to the browser's cache. A picture that nothing on screen is using can be dropped,
+and a screen opened for the first time later asks again, with no connection to answer. So each picture is
+downloaded once at start-up, kept in memory as a blob, and the screens draw from the in-memory copy
+(`ui/artCache.ts`, read through `art` in `ui/art.ts`). If a server sends a picture without an image type,
+the file extension is used, because a blob without one will not draw. If the download fails (offline at
+start-up) the original address is used, as before.
+
+The screens wait for the pictures before the first draw (a plain sea-coloured screen, hidden behind
+Facebook's own loading screen in the game), so a screen is never redrawn from the network address to the
+in-memory one while the player is looking at it.
+
+### Smaller choices
+- A start is not attempted when the browser says it is offline, so the reason appears at once instead of
+  after the 10-second timeout.
+- A crash screen (`ErrorBoundary`) replaces a blank page if drawing a screen throws: a plain message and a
+  Reload button. A waiting score is already written down, so reloading does not lose it.
+- A queued score is never shown as saved. The line under the score says what is true.
+
+### Known limits
+- **A score only survives if some storage worked.** If both Facebook's player data and localStorage are
+  unavailable (a private window offline), a score waiting when the page is closed is lost. It is kept for
+  the whole visit in memory.
+- **Offline at start-up.** If the game is opened with no connection at all, the pictures cannot be kept and
+  the screens cannot draw them. The game does not work without its first load; only a network lost *after*
+  loading is handled.
+- **Playing offline is not ranked.** Practice rounds are local only; there is no way to play a ranked round
+  without a connection, by design (the server issues the seed and the clock).
+- **Not tested with a real flaky network.** The retry, queue, storage and expiry rules are unit tested
+  with simulated failures. The page-level behaviour (offline events, closing the page mid-send) should be
+  checked by hand: switch the network off in DevTools, finish a round, switch it on.
+- **Two devices, one player.** If the same player has waiting scores on two devices, Facebook's copy is
+  overwritten by whichever wrote last; each device keeps its own local copy, so neither loses its own.
 
 ## Known limits and what I would do with more time
 
