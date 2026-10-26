@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import func, select, update
 
 from app.core.config import settings
@@ -24,8 +25,9 @@ def _auth(player):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _start(client, player):
-    return client.post("/rounds/start", headers=_auth(player))
+def _start(client, player, field=None):
+    body = None if field is None else {"field_width": field[0], "field_height": field[1]}
+    return client.post("/rounds/start", headers=_auth(player), json=body)
 
 
 def _round_count(db, player=None):
@@ -64,6 +66,82 @@ def test_start_creates_a_round(client, db):
     assert row.seed == body["seed"]
     assert row.status == "started"
     assert row.submitted_at is None
+
+
+# --- The field shape -----------------------------------------------------------
+
+
+def test_a_round_without_a_field_uses_the_default_one(client, db):
+    player = _player(db)
+    body = _start(client, player).json()
+
+    assert (body["field_width"], body["field_height"]) == (config.FIELD_WIDTH, config.FIELD_HEIGHT)
+    row = db.scalar(select(Round))
+    assert (row.field_width, row.field_height) == (config.FIELD_WIDTH, config.FIELD_HEIGHT)
+
+
+def test_the_game_can_ask_for_a_field_that_fits_its_window(client, db):
+    player = _player(db)
+    response = _start(client, player, (29_000, 14_000))
+
+    assert response.status_code == 201
+    body = response.json()
+    assert (body["field_width"], body["field_height"]) == (29_000, 14_000)
+    row = db.scalar(select(Round))
+    assert (row.field_width, row.field_height) == (29_000, 14_000)
+
+
+def test_the_seed_and_field_give_the_schedule_the_game_draws(client, db):
+    player = _player(db)
+    body = _start(client, player, (29_000, 14_000)).json()
+
+    schedule = generate_schedule(body["seed"], config.Field(body["field_width"], body["field_height"]))
+    assert max(b.x for b in schedule) > config.FIELD_WIDTH  # it really is the wide field
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        (config.FIELD_MIN - 1, 20_000),
+        (20_000, config.FIELD_MAX + 1),
+        (0, 0),
+        (-1, -1),
+        (8_000, 36_000),  # a sliver
+    ],
+)
+def test_a_field_outside_the_bounds_is_refused_and_no_round_is_made(client, db, field):
+    player = _player(db)
+    response = _start(client, player, field)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "invalid_field"
+    assert _round_count(db) == 0
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"field_width": 10_000},
+        {"field_height": 20_000},
+        {"field_width": "10000", "field_height": "20000"},
+        {"field_width": 10_000.5, "field_height": 20_000},
+        {"field_width": None, "field_height": None},
+        {"field_width": True, "field_height": 20_000},
+    ],
+)
+def test_a_malformed_field_is_a_validation_error(client, db, body):
+    player = _player(db)
+    response = client.post("/rounds/start", headers=_auth(player), json=body)
+
+    assert response.status_code == 422
+    assert _round_count(db) == 0
+
+
+def test_a_refused_field_does_not_use_up_the_rate_limit(client, db):
+    player = _player(db)
+    for _ in range(START_LIMIT + 3):
+        assert _start(client, player, (1, 1)).status_code == 422
+    assert _start(client, player).status_code == 201
 
 
 def test_round_expires_in_about_a_day(client, db):

@@ -8,6 +8,7 @@ Rules that keep the two implementations identical:
   * integers only, no floats anywhere;
   * every bubble consumes the same random draws in the same order:
     kind, x, y, then the gap to the next spawn;
+  * the field's width and height only decide the size of the x and y draws;
   * "a // b" here means floor division of non-negative integers, which is
     Math.floor(a / b) in JavaScript.
 """
@@ -69,8 +70,8 @@ def phase_at(time_ms: int) -> config.Phase:
     return config.PHASES[-1]
 
 
-def generate_schedule(seed: int) -> tuple[Bubble, ...]:
-    """Every bubble of a round, in spawn order."""
+def generate_schedule(seed: int, field: config.Field = config.DEFAULT_FIELD) -> tuple[Bubble, ...]:
+    """Every bubble of a round, in spawn order, inside `field`."""
     rng = Mulberry32(seed)
     pearl = config.PEARL
     standard = config.STANDARD
@@ -81,8 +82,8 @@ def generate_schedule(seed: int) -> tuple[Bubble, ...]:
     while t < config.ROUND_DURATION_MS:
         phase = phase_at(t)
         kind = pearl if rng.below(1000) < pearl.chance_permille else standard
-        span_x = config.FIELD_WIDTH - 2 * kind.radius + 1
-        span_y = config.FIELD_HEIGHT - 2 * kind.radius + 1
+        span_x = field.width - 2 * kind.radius + 1
+        span_y = field.height - 2 * kind.radius + 1
         x = kind.radius + rng.below(span_x)
         y = kind.radius + rng.below(span_y)
         bubbles.append(

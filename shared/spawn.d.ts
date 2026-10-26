@@ -22,6 +22,9 @@ export interface GameConfig {
   duration_ms: number;
   field_width: number;
   field_height: number;
+  field_min: number;
+  field_max: number;
+  field_max_ratio: number;
   initial_delay_ms: number;
   spawn_jitter_permille: number;
   hit_min_radius: number;
@@ -52,9 +55,18 @@ export interface ReplayResult {
   popped: number[];
 }
 
+/** The shape of the play field, in game units. */
+export interface FieldSize {
+  width: number;
+  height: number;
+}
+
 export const CONFIG: GameConfig;
+/** The portrait phone field, used when a round does not ask for another. */
+export const DEFAULT_FIELD: FieldSize;
+export function isValidField(width: number, height: number): boolean;
 export function mulberry32(seed: number): () => number;
-export function generateSchedule(seed: number): Bubble[];
+export function generateSchedule(seed: number, field?: FieldSize): Bubble[];
 export function radiusAt(bubble: Bubble, timeMs: number): number;
 export function findHit(schedule: readonly Bubble[], tap: Tap, popped: ReadonlySet<number>): Bubble | null;
 export function replay(schedule: readonly Bubble[], taps: readonly Tap[]): ReplayResult;

@@ -29,7 +29,7 @@ function services(handler: Parameters<typeof fakeFetch>[0], signature: string | 
   return { platform, api, session }
 }
 
-function happyPath(configVersion = CONFIG.version) {
+function happyPath(configVersion = CONFIG.version, field = { width: 10000, height: 21640 }) {
   return (url: string) => {
     if (url.endsWith('/health')) return json({ status: 'ok' })
     if (url.endsWith('/session')) return json({ token: 't', expires_in: 3600, player: PLAYER })
@@ -40,6 +40,8 @@ function happyPath(configVersion = CONFIG.version) {
           round_id: '8179e287-84af-4a48-9abe-fc0cb019086b',
           seed: 42,
           config_version: configVersion,
+          field_width: field.width,
+          field_height: field.height,
           duration_ms: 30000,
           started_at: '2026-10-25T08:00:00Z',
           expires_at: '2026-10-26T08:00:00Z',
@@ -81,6 +83,19 @@ describe('connection check', () => {
     expect(ok).toBe(false)
     expect(steps[4].status).toBe('error')
     expect(steps[4].detail).toContain('Rebuild the client')
+  })
+
+  it('shows the field the server chose', async () => {
+    const { ok, steps } = await run(services(happyPath(CONFIG.version, { width: 29000, height: 14000 })))
+    expect(ok).toBe(true)
+    expect(steps[4].detail).toContain('field 29000 x 14000')
+  })
+
+  it('fails the round step when the server sends a field this build would not play on', async () => {
+    const { ok, steps } = await run(services(happyPath(CONFIG.version, { width: 100, height: 100 })))
+    expect(ok).toBe(false)
+    expect(steps[4].status).toBe('error')
+    expect(steps[4].detail).toContain('not valid')
   })
 
   it('reports a missing mock signature', async () => {

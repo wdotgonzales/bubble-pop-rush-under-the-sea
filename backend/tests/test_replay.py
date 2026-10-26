@@ -30,10 +30,10 @@ def bubble(index, spawn_ms=0, x=5000, y=5000, kind=0, lifetime_ms=1000, radius=c
 # --- Shared vectors: the contract with the game client -----------------------
 
 
-@pytest.mark.parametrize("case", VECTORS["replays"], ids=lambda c: f"{c['name']}-{c['seed']}")
+@pytest.mark.parametrize("case", VECTORS["replays"], ids=lambda c: f"{c['name']}-{c['seed']}-{c['field'][0]}x{c['field'][1]}")
 def test_replay_matches_the_shared_vectors(case):
     taps = [Tap(*t) for t in case["taps"]]
-    score, popped = replay(generate_schedule(case["seed"]), taps)
+    score, popped = replay(generate_schedule(case["seed"], config.Field(*case["field"])), taps)
     assert score == case["score"]
     assert list(popped) == case["popped"]
 

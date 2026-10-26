@@ -330,6 +330,9 @@ scripts), how deployment works, and what is knowingly not solved.
 
 ## PR 6: Portrait field, design-sized bubbles
 
+> Superseded in part by PR 10b: the field is still integer units and the client still scales both axes
+> equally, but its shape is now chosen per round to fit the window instead of being fixed at 10000 x 21640.
+
 ### Why the square field was replaced
 The design is portrait: phone screens are 390 x 844, and the desktop layout shows
 the same portrait play column with the timer and score on either side. A square
@@ -572,6 +575,172 @@ Cloudflare error 521, because the server has no TLS on port 443.
 - The host is set in one place, `config.ts`, so a future move is a one-line change.
 - The staged Facebook build from before the move calls a hostname that is no longer ours.
   Replace staged builds after any hostname change.
+
+## PR 10: Gameplay
+
+### What
+The round itself, on a canvas, and the whole loop around it: DIVE IN, a short countdown,
+30 seconds of popping, the game over screen with the server's verdict and the refreshed
+leaderboard, and PLAY AGAIN. `?preview=play&seed=123` runs a round with no network, for
+reviewing the look.
+
+### The rules are separate from the drawing
+`game/engine.ts` (`GameRound`) knows nothing about the screen, a timer or React. The caller
+passes in the clock, so the same code is tested with a fake clock and used with
+`performance.now()`. It uses the same schedule and the same hit test as the server
+(`shared/spawn.js`) and records every tap in the format the server replays. A test plays a
+round with a perfect player and with a flood of random taps and checks that the score the
+screen shows equals `replay()` of the tap log, which is what the server computes.
+
+### The tap limiter
+The server refuses a whole round that breaks its rhythm rules (taps at least 25 ms apart,
+at most 16 in any second, at most 400 in all). An honest player must never lose a round to
+that, so the game drops a tap that would break a rule instead of recording it. A dropped
+tap does nothing on screen. The limits are copied from `validator.py` into `engine.ts` and a
+test re-implements the server's check and runs a button-masher through it. If the server
+limits change, change both, and the test fails if the engine ever produces a log the server
+would refuse.
+
+### Time
+Round time is the time actually played. A pause stops the clock and is never counted, so a
+tap after a long pause is logged at the time it would have had without it. The server
+measures the minimum time from its own `started_at` (30 seconds minus 1), so the 1.8 second
+countdown before the round only makes the player wait longer than needed, never too short.
+The score the game over screen shows first is the local one; once the server answers, its
+score replaces it, so what the player sees at the end is what is saved.
+
+### Drawing
+- **The field fits the window.** The play field is a rectangle of game units whose shape is
+  chosen for each round to fill the window: tall on a phone, wide on a desktop, in between on a
+  tablet (see "PR 10b"). The first version used one fixed portrait field everywhere, which left
+  a narrow column on a desktop. A tap is converted back into field units, so the server can
+  replay it, and a tap outside the field is ignored.
+- **The score and timer have a strip of their own.** The field is fitted below it, and the
+  game asks for a field that fits the space that is left, so a bubble can never spawn behind
+  them (the first version drew the field under the HUD). The strip grows with the safe-area
+  inset on a phone with a notch.
+- **Canvas for the bubbles, DOM for the text.** The score and timer are normal elements
+  over the canvas, updated directly when they change, so no frame re-renders React.
+  Only the sound button takes taps.
+- **Bubbles keep the look of the menu bubbles** (tint, rim, glint), drawn with gradients.
+  A pearl is gold with a twinkling star, so it is easy to spot.
+- **A slow drift** of up to 70 units on each axis (4 px on a phone) makes bubbles feel alive.
+  Hit tests always use the real position. The hit radius is never below 900 units, far more
+  than the drift, so what you tap is what you hit.
+- **Effects are cosmetic.** `game/effects.ts` holds bursts, rings, "+1" text, ripples and the
+  streak message at 5, 10, 15 and every 5 after. It never touches the score or the tap log.
+- **The last 5 seconds**, the timer turns pink and beats.
+
+### Pausing
+Leaving the tab or the app pauses the round (`visibilitychange`). The player taps CONTINUE
+when ready. A countdown interrupted this way starts again from 3. There is no pause
+button, so a round cannot be paused to wait for a better bubble.
+
+### Sending the score
+The game over screen shows at once and the score is sent in the background, so the player
+can already start the next round. `submitWithRetry` follows the submit contract: 404, 409,
+410 and 422 mean the server has decided and are not retried; a network error, 429 or 5xx is
+retried after 0.8, 2.5 and 6 seconds (a longer `Retry-After` is respected, up to 10 s).
+The submit is idempotent, so a retry never counts twice. While it is in flight the line
+under the score reads "Saving score...", and if every try fails, "Score not saved". The
+leaderboard is refreshed once the score is accepted.
+
+### Sound
+A few short tones made with the Web Audio API, so there are no audio files to load. The
+pitch rises with the streak, a pearl rings twice and the end of a round has three notes.
+The context is created on the first tap, because browsers refuse sound before one. The
+gear in the corner mutes it, and the choice is kept.
+
+### Smaller choices
+- DIVE IN and PLAY AGAIN show "DIVING..." and wait for the server, so a double tap cannot
+  start two rounds (the server allows 10 starts a minute).
+- If a round cannot be started, the player stays on the start screen with a plain reason
+  (no connection, too many rounds, or an out-of-date build). No technical detail is shown.
+- `GameStub` and its styles are gone.
+
+### Known limits
+- **A failed submit is not kept.** If all four tries fail, the score is lost when the page
+  closes. The next PR adds the offline queue, which keeps the round and sends it later.
+- **No Figma frame for the playfield was available**, so the HUD and effects follow the style of
+  the Start and Game Over screens. The canvas is drawn on the CPU every frame; with at most
+  about ten bubbles on screen that is cheap, but I have not measured it on a low-end phone.
+- **I could not listen to the sound**, only check that it is created and respects the mute.
+- **Resizing mid-round.** The field is fixed when the round starts. If the window is resized or
+  the phone is turned during a round, the field is fitted into the new window (with margins on
+  the sides) and the next round asks for a shape that fits.
+
+## PR 10b: The play field fits the window
+
+### What
+The playing area now uses the whole window on every device: tall on a phone, wide on a
+desktop, in between on a tablet. Before, the field was one fixed portrait rectangle
+(10000 x 21640 units), so a desktop window showed a narrow column in the middle.
+
+### Why this reaches the server
+The score is computed on the server by replaying the tap log against the bubbles it rebuilds
+from the seed (`validator.py`). Both sides must therefore agree on the size of the field: it
+decides where bubbles spawn and which taps are in range. A wider field cannot be done in the
+client alone, or taps would land where the server has no bubbles.
+
+### How it works
+- `POST /rounds/start` takes an optional body `{field_width, field_height}`. Without a body the
+  round uses the default portrait field, so nothing that calls it without one breaks.
+- The server checks the shape (`config.is_valid_field`): integers, each side from 8,000 to
+  64,000 units, and the long side at most 3 times the short one. Anything else is `422
+  invalid_field` and no round is created or counted against the rate limit.
+- The field is stored on the round (`field_width`, `field_height`, migration `0004`, default
+  10000 x 21640 for existing rows) and returned in the start response. Submit rebuilds the
+  schedule and bounds-checks the taps with the round's own field, never with anything the client
+  sends later.
+- `generate_schedule(seed, field)` / `generateSchedule(seed, field)`: the field only sets the size
+  of the x and y draws. The number of random draws is the same, so a seed gives the same bubbles at
+  the same moments (spawn times, kinds, lifetimes, the top score) on every field. Only the positions
+  differ. A test checks this.
+- Config version 3 became 4, because positions for a given seed changed shape. A round started under
+  version 3 is refused with 409 on submit, and an old client sees "out of date, reload".
+- The golden vectors (`shared/spawn-vectors.json`) now carry a field for every schedule and replay and
+  include a desktop, a tablet, the largest and the smallest field. Python, JavaScript and the client
+  tests all check them.
+
+### How the client chooses the field
+A standard bubble should be a comfortable size on every screen, so the size is chosen first and the
+field is whatever fits in the window at that size (`game/field.ts`):
+- the on-screen radius of a standard bubble is 17% of the window's shorter side, kept between 56 and
+  78 px (about 66 px on a phone, 78 px on a desktop);
+- pixels per unit is that radius over 1700 units, raised a little on a huge window so the field stays
+  within the server's maximum;
+- the field is the window (minus the strip for the score and timer) divided by that scale, rounded
+  and clamped to the server's bounds and its 3:1 limit.
+On a 390 x 844 phone this is 10000 x 19231, nearly the original field. On 1280 x 720 it is about
+27900 x 13600.
+
+### Does the field shape make the leaderboard unfair?
+It cannot raise the maximum score: every field offers the same bubbles at the same times, so the best
+possible score is the same everywhere. It can change how far apart bubbles are. A mouse crossing a wide
+window and a thumb on a phone are different in any case, and the leaderboard has never been split by
+device. I judged this acceptable for a game of this size, and the next step if it matters would be a
+leaderboard per device class.
+
+### Does letting the client choose the field open a hole?
+A player could ask for the smallest field (8000 x 8000). Bubbles then overlap more, which hides older
+ones (the newest wins) and does not raise the maximum. A bot that knows the seed could already tap
+every bubble on any field, which is the documented limit of this design, and the field gives it nothing
+more. The server never takes the field from a later request, only from the start.
+
+### Deploying
+The migration only adds two columns with defaults, so the old backend code keeps working against the new
+schema. Backend and client ship together (merging builds and deploys both). A client built before this
+change sees config version 4 and shows the out-of-date notice. A new client talking to an old server
+would see version 3 and do the same.
+
+### Known limits
+- **The field is fixed per round.** Resizing the window or turning the phone during a round fits the
+  same field into the new window with margins (see PR 10).
+- **Very wide or tall windows** beyond the 3:1 limit keep margins at the sides.
+- **The Start and Game Over screens are unchanged:** a 1024-wide desktop stage and a 390 x 844 phone
+  stage, scaled to fit. Only the round uses the whole window.
+- **The hit radius is in units.** The smallest tappable bubble is 900 units, which is 34 px on a
+  phone and 41 px on a desktop.
 
 ## Known limits and what I would do with more time
 

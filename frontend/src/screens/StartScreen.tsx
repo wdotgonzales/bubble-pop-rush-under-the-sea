@@ -15,11 +15,21 @@ interface Props {
   muted: boolean
   onToggleMute: () => void
   onPlay: () => void
+  /** A round is being fetched: the button waits so a second tap cannot start another. */
+  starting?: boolean
   /** A short problem to show under the button, for example no connection. */
   notice?: string | null
 }
 
-export default function StartScreen({ layout, bestScore, muted, onToggleMute, onPlay, notice = null }: Props) {
+export default function StartScreen({
+  layout,
+  bestScore,
+  muted,
+  onToggleMute,
+  onPlay,
+  starting = false,
+  notice = null,
+}: Props) {
   const g = START[layout]
   const turtle: CSSProperties = { ...g.turtle }
 
@@ -55,9 +65,10 @@ export default function StartScreen({ layout, bestScore, muted, onToggleMute, on
           height={g.button.height}
           fontSize={g.button.fontSize}
           sparkles={g.sparkles}
+          disabled={starting}
           onClick={onPlay}
         >
-          DIVE IN!
+          {starting ? 'DIVING…' : 'DIVE IN!'}
         </PearlButton>
       </div>
 

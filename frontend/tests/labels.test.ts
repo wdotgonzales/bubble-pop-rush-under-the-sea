@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bestScoreLabel, personalBestLabel } from '../src/state/labels'
+import { ApiError, NetworkError } from '../src/api/client'
+import { OUTDATED_BUILD_NOTICE, bestScoreLabel, personalBestLabel, saveLabel, startFailureLabel } from '../src/state/labels'
 import { mapLoad } from '../src/state/load'
 
 describe('bestScoreLabel', () => {
@@ -33,5 +34,39 @@ describe('mapLoad', () => {
     expect(mapLoad<number, number>({ status: 'loading' }, (n) => n)).toEqual({ status: 'loading' })
     const failed = { status: 'error', message: 'boom' } as const
     expect(mapLoad<number, number>(failed, (n) => n)).toBe(failed)
+  })
+})
+
+describe('startFailureLabel', () => {
+  it('tells the player to wait when rounds are limited', () => {
+    expect(startFailureLabel(new ApiError(429, null, 'slow'))).toContain('Wait')
+  })
+
+  it('suggests checking the connection when the server cannot be reached', () => {
+    expect(startFailureLabel(new NetworkError('offline'))).toContain('connection')
+  })
+
+  it('has a plain message for anything else', () => {
+    expect(startFailureLabel(new ApiError(500, null, 'boom'))).toBe("Couldn't start a round. Please try again.")
+    expect(startFailureLabel(new Error('x'))).toBe("Couldn't start a round. Please try again.")
+  })
+
+  it('never shows technical detail', () => {
+    for (const error of [new ApiError(500, 'db_down', 'secret detail'), new NetworkError('ECONNRESET 10.0.0.1')]) {
+      const text = startFailureLabel(error)
+      expect(text).not.toContain('secret')
+      expect(text).not.toContain('ECONN')
+    }
+  })
+})
+
+describe('saveLabel and the outdated notice', () => {
+  it('say what is happening to the score', () => {
+    expect(saveLabel('saving')).toBe('Saving score…')
+    expect(saveLabel('failed')).toBe('Score not saved')
+  })
+
+  it('tells the player to reload an outdated build', () => {
+    expect(OUTDATED_BUILD_NOTICE).toContain('Reload')
   })
 })

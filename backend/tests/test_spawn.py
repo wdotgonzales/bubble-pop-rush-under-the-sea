@@ -34,9 +34,11 @@ def test_prng_matches_the_shared_vectors(case):
     assert [rng.next_u32() for _ in case["first"]] == case["first"]
 
 
-@pytest.mark.parametrize("case", VECTORS["schedules"], ids=lambda c: f"seed={c['seed']}")
+@pytest.mark.parametrize(
+    "case", VECTORS["schedules"], ids=lambda c: f"seed={c['seed']}-field={c['field'][0]}x{c['field'][1]}"
+)
 def test_schedule_matches_the_shared_vectors(case):
-    got = [b.as_vector() for b in generate_schedule(case["seed"])]
+    got = [b.as_vector() for b in generate_schedule(case["seed"], config.Field(*case["field"]))]
     assert got == case["bubbles"]
 
 
@@ -100,6 +102,49 @@ def test_every_bubble_is_fully_inside_the_field():
         for b in generate_schedule(seed):
             assert b.radius <= b.x <= config.FIELD_WIDTH - b.radius, (seed, b)
             assert b.radius <= b.y <= config.FIELD_HEIGHT - b.radius, (seed, b)
+
+
+FIELDS = [
+    config.DEFAULT_FIELD,
+    config.Field(29_000, 14_000),  # a desktop window
+    config.Field(16_732, 20_261),  # a tablet held upright
+    config.Field(64_000, 30_000),  # the largest
+    config.Field(config.FIELD_MIN, config.FIELD_MIN),  # the smallest
+]
+
+
+@pytest.mark.parametrize("field", FIELDS, ids=lambda f: f"{f.width}x{f.height}")
+def test_every_bubble_is_fully_inside_any_field(field):
+    for seed in SEEDS:
+        for b in generate_schedule(seed, field):
+            assert b.radius <= b.x <= field.width - b.radius, (seed, b)
+            assert b.radius <= b.y <= field.height - b.radius, (seed, b)
+
+
+@pytest.mark.parametrize("field", FIELDS, ids=lambda f: f"{f.width}x{f.height}")
+def test_bubbles_use_the_whole_of_any_field(field):
+    bubbles = [b for seed in SEEDS for b in generate_schedule(seed, field)]
+    xs = [b.x for b in bubbles]
+    ys = [b.y for b in bubbles]
+    assert min(xs) < field.width // 4 and max(xs) > field.width - field.width // 4
+    assert min(ys) < field.height // 4 and max(ys) > field.height - field.height // 4
+
+
+def test_the_field_changes_where_bubbles_are_but_never_when_or_what():
+    # Timing, kinds and lifetimes come from the same draws whatever the field is, so every
+    # field offers the same bubbles at the same moments and the same top score.
+    base = generate_schedule(123, config.DEFAULT_FIELD)
+    for field in FIELDS[1:]:
+        other = generate_schedule(123, field)
+        assert [(b.spawn_ms, b.kind, b.points, b.radius, b.lifetime_ms) for b in other] == [
+            (b.spawn_ms, b.kind, b.points, b.radius, b.lifetime_ms) for b in base
+        ]
+        assert max_score(other) == max_score(base)
+        assert [(b.x, b.y) for b in other] != [(b.x, b.y) for b in base]
+
+
+def test_without_a_field_the_default_one_is_used():
+    assert generate_schedule(9) == generate_schedule(9, config.DEFAULT_FIELD)
 
 
 def test_the_field_is_portrait_and_bubbles_use_all_of_it():

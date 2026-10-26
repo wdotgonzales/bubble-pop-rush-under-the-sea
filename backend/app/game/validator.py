@@ -49,8 +49,11 @@ def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def parse_taps(raw: object) -> list[Tap] | str:
-    """Raw submitted data -> list of Tap, or a rejection reason string."""
+def parse_taps(raw: object, field: config.Field = config.DEFAULT_FIELD) -> list[Tap] | str:
+    """Raw submitted data -> list of Tap, or a rejection reason string.
+
+    `field` is the shape this round was played on; taps outside it are refused.
+    """
     if not isinstance(raw, (list, tuple)):
         return MALFORMED
     if len(raw) > MAX_TAPS:
@@ -64,7 +67,7 @@ def parse_taps(raw: object) -> list[Tap] | str:
             return MALFORMED
         if not 0 <= t <= config.ROUND_DURATION_MS:
             return OUT_OF_RANGE
-        if not (0 <= x <= config.FIELD_WIDTH and 0 <= y <= config.FIELD_HEIGHT):
+        if not (0 <= x <= field.width and 0 <= y <= field.height):
             return OUT_OF_RANGE
         taps.append(Tap(t=t, x=x, y=y))
     return taps
@@ -84,15 +87,17 @@ def check_rhythm(taps: list[Tap]) -> str | None:
     return None
 
 
-def validate_round(seed: int, raw_taps: object) -> Verdict:
-    """Validate a tap log for the round that was issued with `seed`."""
-    taps = parse_taps(raw_taps)
+def validate_round(
+    seed: int, raw_taps: object, field: config.Field = config.DEFAULT_FIELD
+) -> Verdict:
+    """Validate a tap log for the round that was issued with `seed` on `field`."""
+    taps = parse_taps(raw_taps, field)
     if isinstance(taps, str):
         return _reject(taps)
     problem = check_rhythm(taps)
     if problem is not None:
         return _reject(problem)
 
-    schedule = generate_schedule(seed)
+    schedule = generate_schedule(seed, field)
     score, popped = replay(schedule, taps)
     return Verdict(valid=True, score=score, popped=popped, tap_count=len(taps))

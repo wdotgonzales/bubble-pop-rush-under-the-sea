@@ -7,7 +7,12 @@ from app.api.deps import get_current_player
 from app.core.database import get_db
 from app.game import config
 from app.models.player import Player
-from app.schemas.round import RoundStartResponse, SubmitRequest, SubmitResponse
+from app.schemas.round import (
+    RoundStartRequest,
+    RoundStartResponse,
+    SubmitRequest,
+    SubmitResponse,
+)
 from app.services.rounds import (
     CONFIG_MISMATCH,
     START_WINDOW,
@@ -23,10 +28,23 @@ router = APIRouter(tags=["rounds"])
 
 
 @router.post("/rounds/start", response_model=RoundStartResponse, status_code=201)
-def start(player: Player = Depends(get_current_player), db: Session = Depends(get_db)):
-    """Begin a round. The seed returned here defines every bubble in it."""
+def start(
+    body: RoundStartRequest | None = None,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Begin a round. The seed and the field returned here define every bubble in it.
+
+    The game may ask for a field shape that fits its window. Without a body the round uses
+    the default portrait field. A shape outside the allowed bounds is refused with 422.
+    """
+    field = config.DEFAULT_FIELD
+    if body is not None:
+        if not config.is_valid_field(body.field_width, body.field_height):
+            raise HTTPException(status_code=422, detail={"code": "invalid_field"})
+        field = config.Field(body.field_width, body.field_height)
     try:
-        new_round = start_round(db, player)
+        new_round = start_round(db, player, field)
     except TooManyRounds:
         raise HTTPException(
             status_code=429,
@@ -37,6 +55,8 @@ def start(player: Player = Depends(get_current_player), db: Session = Depends(ge
         round_id=new_round.id,
         seed=new_round.seed,
         config_version=new_round.config_version,
+        field_width=new_round.field_width,
+        field_height=new_round.field_height,
         duration_ms=config.ROUND_DURATION_MS,
         started_at=new_round.started_at,
         expires_at=new_round.expires_at,

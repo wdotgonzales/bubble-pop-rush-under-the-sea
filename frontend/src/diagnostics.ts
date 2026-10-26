@@ -1,6 +1,6 @@
 import { CONFIG, generateSchedule } from '@shared/spawn.js'
 import { ApiError, NetworkError } from './api/client'
-import { isRoundCompatible } from './api/guard'
+import { isRoundCompatible, roundField } from './api/guard'
 import type { Services } from './services'
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'error'
@@ -89,8 +89,12 @@ export async function runDiagnostics(
           `This build uses game config v${CONFIG.version} but the server uses v${round.config_version}. Rebuild the client.`,
         )
       }
-      const bubbles = generateSchedule(round.seed).length
-      return `round ${round.round_id.slice(0, 8)}, seed ${round.seed}, ${bubbles} bubbles, config v${round.config_version}`
+      const field = roundField(round)
+      if (!field) {
+        throw new Error(`The server sent a play field of ${round.field_width} x ${round.field_height}, which is not valid.`)
+      }
+      const bubbles = generateSchedule(round.seed, field).length
+      return `round ${round.round_id.slice(0, 8)}, seed ${round.seed}, ${bubbles} bubbles, field ${field.width} x ${field.height}, config v${round.config_version}`
     }))
 
   return ok

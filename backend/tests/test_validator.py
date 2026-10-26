@@ -76,6 +76,42 @@ def test_taps_in_the_lower_part_of_the_tall_field_are_accepted():
     assert validate_round(SEED, taps).valid
 
 
+WIDE = config.Field(29_000, 14_000)
+
+
+def test_a_round_is_checked_against_its_own_field():
+    # Valid on a wide field, out of range on the default portrait one.
+    taps = [tap(1000, 25_000, 5000)]
+    assert validate_round(SEED, taps, WIDE).valid
+    assert validate_round(SEED, taps).reason == OUT_OF_RANGE
+    # And the other way round: tall enough for the portrait field, too tall for the wide one.
+    tall = [tap(1000, 5000, 20_000)]
+    assert validate_round(SEED, tall).valid
+    assert validate_round(SEED, tall, WIDE).reason == OUT_OF_RANGE
+
+
+def test_the_far_corner_of_any_field_is_accepted_and_one_past_it_is_not():
+    corner = [tap(500, WIDE.width, WIDE.height)]
+    assert validate_round(SEED, corner, WIDE).valid
+    assert validate_round(SEED, [tap(500, WIDE.width + 1, 0)], WIDE).reason == OUT_OF_RANGE
+    assert validate_round(SEED, [tap(500, 0, WIDE.height + 1)], WIDE).reason == OUT_OF_RANGE
+
+
+def test_honest_taps_on_a_wide_field_score_the_maximum_there():
+    taps = [tap(b.spawn_ms + 100, b.x, b.y) for b in generate_schedule(SEED, WIDE)]
+    verdict = validate_round(SEED, taps, WIDE)
+    assert verdict.valid
+    assert verdict.score == max_score(generate_schedule(SEED, WIDE))
+
+
+def test_taps_for_one_field_do_not_score_on_another():
+    # The schedule is rebuilt for the round's own field, so a log made for another shape
+    # mostly misses.
+    taps = [tap(b.spawn_ms + 100, b.x, b.y) for b in generate_schedule(SEED, WIDE)]
+    elsewhere = validate_round(SEED, taps)  # judged on the default field
+    assert elsewhere.score < max_score(generate_schedule(SEED)) // 3
+
+
 # --- Malformed input ---------------------------------------------------------
 
 

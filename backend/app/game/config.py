@@ -13,17 +13,52 @@ client must mirror the change in shared/spawn.js (or its TypeScript port).
 
 from dataclasses import dataclass
 
-CONFIG_VERSION = 3
+CONFIG_VERSION = 4
 
 ROUND_DURATION_MS = 30_000
 
-# The play field is portrait, like the phone layout in the design (390 x 844).
-# Positions are integers in 0..FIELD_WIDTH by 0..FIELD_HEIGHT; radii are in the
-# same units. The client scales BOTH axes by one factor (fit to the play area), so
-# bubbles stay round and the hit test, which is plain distance in these units,
-# matches what is drawn. On a 390 px wide phone one unit is 0.039 px.
+# The play field is a rectangle of integer units. Positions are integers in
+# 0..width by 0..height; radii are in the same units. The client scales BOTH axes
+# by one factor, so bubbles stay round and the hit test, which is plain distance in
+# these units, matches what is drawn.
+#
+# The field's SHAPE is chosen per round: the game asks for one that fits its window
+# (a tall one on a phone, a wide one on a desktop, so every screen is used in full),
+# and the server keeps it with the round. Only the bounds below are fixed, so a client
+# cannot ask for something absurd. A bubble's size in units never changes, so the game
+# draws it at a similar size on every screen, and a bigger field just has more room
+# between bubbles.
+#
+# FIELD_WIDTH x FIELD_HEIGHT is the default: the portrait phone layout in the design
+# (390 x 844, where one unit is 0.039 px). It is used when a round is started without
+# asking for a shape.
 FIELD_WIDTH = 10_000
 FIELD_HEIGHT = 21_640
+
+# Each side of a field must be within these, and the long side at most this many
+# times the short one (so no thin slivers).
+FIELD_MIN = 8_000
+FIELD_MAX = 64_000
+FIELD_MAX_RATIO = 3
+
+
+@dataclass(frozen=True)
+class Field:
+    width: int
+    height: int
+
+
+DEFAULT_FIELD = Field(FIELD_WIDTH, FIELD_HEIGHT)
+
+
+def is_valid_field(width: object, height: object) -> bool:
+    """Is this a field shape the server will play on?"""
+    for side in (width, height):
+        if isinstance(side, bool) or not isinstance(side, int):
+            return False
+        if not FIELD_MIN <= side <= FIELD_MAX:
+            return False
+    return max(width, height) <= FIELD_MAX_RATIO * min(width, height)
 
 # First bubble appears this long after the round starts.
 INITIAL_DELAY_MS = 400
@@ -88,6 +123,9 @@ def config_as_dict() -> dict:
         "duration_ms": ROUND_DURATION_MS,
         "field_width": FIELD_WIDTH,
         "field_height": FIELD_HEIGHT,
+        "field_min": FIELD_MIN,
+        "field_max": FIELD_MAX,
+        "field_max_ratio": FIELD_MAX_RATIO,
         "initial_delay_ms": INITIAL_DELAY_MS,
         "spawn_jitter_permille": SPAWN_JITTER_PERMILLE,
         "hit_min_radius": HIT_MIN_RADIUS,

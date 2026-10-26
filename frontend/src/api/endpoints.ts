@@ -1,3 +1,4 @@
+import type { FieldSize } from '@shared/spawn.js'
 import type {
   Leaderboard,
   MeResponse,
@@ -21,7 +22,17 @@ export function createEndpoints(client: ApiClient) {
 
     getMe: () => client.request<MeResponse>('GET', '/me'),
 
-    startRound: () => client.request<RoundStart>('POST', '/rounds/start'),
+    /**
+     * Start a round. `field` is the shape of play field the window can show in full; the
+     * server checks it and answers with the one the round will really use. Without it the
+     * server uses its default portrait field.
+     */
+    startRound: (field?: FieldSize) =>
+      client.request<RoundStart>(
+        'POST',
+        '/rounds/start',
+        field ? { body: { field_width: field.width, field_height: field.height } } : undefined,
+      ),
 
     submitRound: (roundId: string, taps: readonly Tap[], clientDurationMs: number) =>
       client.request<SubmitResult>('POST', `/rounds/${encodeURIComponent(roundId)}/submit`, {

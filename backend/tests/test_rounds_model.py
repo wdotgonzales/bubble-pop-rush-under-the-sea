@@ -27,6 +27,24 @@ def _round(player, **overrides):
     return Round(**values)
 
 
+def test_a_round_gets_the_default_field_unless_told_otherwise(db):
+    player = _player(db)
+    db.add(_round(player))
+    db.commit()
+
+    row = db.scalar(select(Round))
+    assert (row.field_width, row.field_height) == (10_000, 21_640)
+
+
+def test_a_round_keeps_the_field_it_was_given(db):
+    player = _player(db)
+    db.add(_round(player, field_width=29_000, field_height=14_000))
+    db.commit()
+
+    row = db.scalar(select(Round))
+    assert (row.field_width, row.field_height) == (29_000, 14_000)
+
+
 def test_round_defaults(db):
     player = _player(db)
     row = _round(player)
