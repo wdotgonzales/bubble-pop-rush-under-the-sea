@@ -17,7 +17,15 @@ class LeaderboardMe(BaseModel):
 
 
 class LeaderboardResponse(BaseModel):
-    # Up to 10, best first. Empty when nobody has scored yet.
+    # One page, best first: up to `page_size` rows (10 unless asked otherwise). Empty when nobody
+    # has scored yet, or when the page is past the end.
     entries: list[LeaderboardEntry]
-    # The requesting player's own standing, even when they are outside the top 10.
-    me: LeaderboardMe
+    # Which page this is (1-based) and how big pages are.
+    page: int
+    page_size: int
+    # Players with a score, over all pages, and how many pages that makes (0 when nobody has scored).
+    total: int
+    total_pages: int
+    # The requesting player's own standing, whatever page was asked for. Null when the request was
+    # not signed in (the leaderboard itself is public).
+    me: LeaderboardMe | None

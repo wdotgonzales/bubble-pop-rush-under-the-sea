@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from sqlalchemy import text
 
@@ -31,14 +32,44 @@ def _auth(player):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _board(client, player):
-    response = client.get("/leaderboard", headers=_auth(player))
+def _board(client, player, **params):
+    response = client.get("/leaderboard", params=params, headers=_auth(player))
     assert response.status_code == 200
     return response.json()
 
 
-def test_leaderboard_requires_a_session(client):
-    assert client.get("/leaderboard").status_code == 401
+def test_the_leaderboard_can_be_read_without_signing_in(client, db):
+    _player(db, "high", 90, 1)
+    _player(db, "low", 10, 2, fb_id="fb-low-private")
+
+    response = client.get("/leaderboard")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [(e["rank"], e["display_name"], e["is_me"]) for e in body["entries"]] == [
+        (1, "high", False),
+        (2, "low", False),
+    ]
+    assert body["me"] is None
+    assert (body["page"], body["total"]) == (1, 2)
+    assert "fb-low-private" not in response.text
+
+
+def test_a_wrong_or_expired_session_is_still_refused(client, db):
+    me = _player(db, "me", 10, 0)
+
+    assert client.get("/leaderboard", headers={"Authorization": "Bearer not-a-token"}).status_code == 401
+    expired = create_session_token(str(me.id), settings.SECRET_KEY, ttl_seconds=-10)
+    assert client.get("/leaderboard", headers={"Authorization": f"Bearer {expired}"}).status_code == 401
+
+
+def test_a_session_for_a_player_who_no_longer_exists_is_refused(client, db):
+    me = _player(db, "me", 10, 0)
+    headers = _auth(me)
+    db.delete(me)
+    db.commit()
+
+    assert client.get("/leaderboard", headers=headers).status_code == 401
 
 
 def test_empty_leaderboard(client, db):
@@ -80,8 +111,6 @@ def test_a_tie_goes_to_whoever_got_there_first(client, db):
 
 
 def test_a_dead_heat_is_resolved_by_id_and_agrees_with_rank(client, db):
-    from uuid import UUID
-
     low = _player(db, "low-id", 50, 5, player_id=UUID(int=1))
     high = _player(db, "high-id", 50, 5, player_id=UUID(int=2))
 
@@ -173,3 +202,156 @@ def test_the_view_follows_score_changes_immediately(client, db):
     body = _board(client, me)
     assert body["me"] == {"rank": 1, "best_score": 99}
     assert [e["display_name"] for e in body["entries"]] == ["me", "rival"]
+
+
+# --- Paging -----------------------------------------------------------------------------------
+
+
+def _field(db, count):
+    """`count` players with distinct scores, p00 the best."""
+    return [_player(db, f"p{i:02d}", 100 - i, i) for i in range(count)]
+
+
+def test_the_response_says_where_it_is_in_the_list(client, db):
+    players = _field(db, 25)
+
+    body = _board(client, players[0])
+
+    assert (body["page"], body["page_size"], body["total"], body["total_pages"]) == (1, 10, 25, 3)
+    assert len(body["entries"]) == 10
+
+
+def test_later_pages_continue_the_ranks(client, db):
+    players = _field(db, 25)
+
+    second = _board(client, players[0], page=2)
+    last = _board(client, players[0], page=3)
+
+    assert [(e["rank"], e["display_name"]) for e in second["entries"]] == [
+        (11 + i, f"p{10 + i:02d}") for i in range(10)
+    ]
+    assert second["page"] == 2
+    assert [e["rank"] for e in last["entries"]] == [21, 22, 23, 24, 25]
+
+
+def test_the_page_size_can_be_changed(client, db):
+    players = _field(db, 25)
+
+    body = _board(client, players[0], page=2, page_size=4)
+
+    assert [(e["rank"], e["display_name"]) for e in body["entries"]] == [
+        (5 + i, f"p{4 + i:02d}") for i in range(4)
+    ]
+    assert (body["page_size"], body["total_pages"]) == (4, 7)
+
+
+def test_the_biggest_page_size_is_allowed(client, db):
+    players = _field(db, 60)
+
+    body = _board(client, players[0], page_size=50)
+
+    assert len(body["entries"]) == 50
+    assert body["total_pages"] == 2
+
+
+def test_a_page_past_the_end_is_empty_and_not_an_error(client, db):
+    players = _field(db, 3)
+
+    body = _board(client, players[2], page=5)
+
+    assert body["entries"] == []
+    assert (body["page"], body["total"], body["total_pages"]) == (5, 3, 1)
+    assert body["me"] == {"rank": 3, "best_score": 98}
+
+
+def test_the_biggest_allowed_page_is_fine_on_a_small_board(client, db):
+    players = _field(db, 3)
+
+    body = _board(client, players[0], page=10_000, page_size=50)
+
+    assert body["entries"] == []
+
+
+def test_an_empty_board_has_no_pages(client, db):
+    me = _player(db, "me")
+
+    body = _board(client, me)
+
+    assert (body["entries"], body["total"], body["total_pages"]) == ([], 0, 0)
+
+
+def test_players_without_a_score_are_not_counted(client, db):
+    players = _field(db, 3)
+    _player(db, "idle")
+
+    assert _board(client, players[0])["total"] == 3
+
+
+def test_every_player_appears_exactly_once_across_the_pages_even_with_ties(client, db):
+    # Plenty of equal scores, equal times and a few dead heats, so only the tie-breaks decide.
+    players = [
+        _player(db, f"t{i:02d}", 50 if i % 3 else 40, i % 4, player_id=UUID(int=i + 1))
+        for i in range(17)
+    ]
+    names, ranks = [], []
+    for page in range(1, 6):
+        body = _board(client, players[0], page=page, page_size=4)
+        names += [e["display_name"] for e in body["entries"]]
+        ranks += [e["rank"] for e in body["entries"]]
+
+    assert sorted(names) == sorted(p.display_name for p in players)
+    assert ranks == list(range(1, 18))
+
+
+def test_ranks_on_a_later_page_match_the_rank_route(client, db):
+    players = [_player(db, f"p{i}", 40 + (i * 7) % 23, i) for i in range(14)]
+
+    entries = _board(client, players[0], page=2, page_size=5)["entries"]
+
+    assert len(entries) == 5
+    for entry in entries:
+        player = next(p for p in players if p.display_name == entry["display_name"])
+        db.refresh(player)
+        assert entry["rank"] == get_rank(db, player)
+
+
+def test_my_row_is_flagged_on_a_later_page_and_my_rank_is_always_reported(client, db):
+    for i in range(12):
+        _player(db, f"top{i}", 100 - i, i)
+    me = _player(db, "me", 5, 99)
+
+    first = _board(client, me)
+    second = _board(client, me, page=2)
+
+    assert not any(e["is_me"] for e in first["entries"])
+    assert first["me"] == {"rank": 13, "best_score": 5}
+    assert [(e["rank"], e["is_me"]) for e in second["entries"]] == [(11, False), (12, False), (13, True)]
+    assert second["me"] == {"rank": 13, "best_score": 5}
+
+
+def test_bad_paging_parameters_are_refused(client, db):
+    me = _player(db, "me", 10, 0)
+
+    for params in (
+        {"page": 0},
+        {"page": -1},
+        {"page": 10_001},
+        {"page": 10**30},
+        {"page": "abc"},
+        {"page_size": 0},
+        {"page_size": 51},
+        {"page_size": "ten"},
+    ):
+        response = client.get("/leaderboard", params=params, headers=_auth(me))
+        assert response.status_code == 422, params
+
+
+def test_paging_works_without_signing_in(client, db):
+    _field(db, 25)
+
+    response = client.get("/leaderboard", params={"page": 2, "page_size": 10})
+
+    body = response.json()
+    assert response.status_code == 200
+    assert [e["rank"] for e in body["entries"]] == list(range(11, 21))
+    assert body["me"] is None
