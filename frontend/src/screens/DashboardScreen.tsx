@@ -41,7 +41,7 @@ export default function DashboardScreen({ layout, board, onRetry, onHome }: Prop
           <header className="dash-header">
             <img className="dash-turtle" src={art.turtleStart} alt="" draggable={false} width={g.turtle.width} height={g.turtle.height} />
             <h1 className="dash-title" style={{ fontSize: g.titleFontSize }}>
-              Dashboard
+              Leaderboards
             </h1>
           </header>
 
@@ -65,7 +65,7 @@ export default function DashboardScreen({ layout, board, onRetry, onHome }: Prop
       </section>
 
       <h1 className="dash-title abs" style={{ left: g.title.left, top: g.title.top, width: g.title.width, fontSize: g.title.fontSize }}>
-        Dashboard
+        Leaderboards
       </h1>
 
       <img className="dash-turtle abs" src={art.turtleStart} alt="" draggable={false} style={turtle} />
