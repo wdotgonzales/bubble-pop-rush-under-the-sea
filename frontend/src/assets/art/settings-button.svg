@@ -1,0 +1,45 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="Settings button" clip-path="url(#clip0_0_4)">
+<g id="Settings shadow" opacity="0.5" filter="url(#filter0_f_0_4)">
+<circle cx="24" cy="26" r="24" fill="#06456B"/>
+</g>
+<g id="Settings face">
+<g filter="url(#filter1_i_0_4)">
+<circle cx="24" cy="24" r="23" fill="url(#paint0_linear_0_4)"/>
+</g>
+<circle cx="24" cy="24" r="22.6" stroke="#97D6D8" stroke-width="0.8"/>
+</g>
+<g id="Settings gear">
+<use xlink:href="#stroke0_0_4" fill="#D5F3F1"/>
+<mask id="stroke1_0_4" fill="white">
+<use xlink:href="#stroke0_0_4"/>
+</mask>
+<path d="M21.3 10.5H26.7L28.05 14.3571L30.75 15.6429L34.8 14.3571L37.5 19.5L34.8 22.0714V25.9286L37.5 28.5L34.8 33.6429L30.75 32.3571L28.05 34.9286L26.7 37.5H21.3L19.95 33.6429L15.9 32.3571L13.2 33.6429L10.5 28.5L13.2 25.9286V22.0714L10.5 19.5L13.2 14.3571L17.25 15.6429L19.95 14.3571L21.3 10.5ZM29.4 24C29.4 22.4655 28.76 20.9939 27.6207 19.9089C26.4814 18.8239 24.9362 18.2143 23.325 18.2143C21.7138 18.2143 20.1686 18.8239 19.0293 19.9089C17.89 20.9939 17.25 22.4655 17.25 24C17.25 25.5345 17.89 27.0061 19.0293 28.0911C20.1686 29.1761 21.7138 29.7857 23.325 29.7857C24.9362 29.7857 26.4814 29.1761 27.6207 28.0911C28.76 27.0061 29.4 25.5345 29.4 24Z" stroke-width="1.2" stroke="#285775" mask="url(#stroke1_0_4)"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_0_4" x="-2" y="0" width="52" height="52" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="1" result="effect1_foregroundBlur_0_4"/>
+</filter>
+<filter id="filter1_i_0_4" x="1" y="1" width="46" height="47" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="1"/>
+<feGaussianBlur stdDeviation="1"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.807843 0 0 0 0 1 0 0 0 0 0.968627 0 0 0 0.501961 0"/>
+<feBlend mode="normal" in2="shape" result="effect1_innerShadow_0_4"/>
+</filter>
+<linearGradient id="paint0_linear_0_4" x1="24" y1="1" x2="24" y2="47" gradientUnits="userSpaceOnUse">
+<stop stop-color="#5CAFC5"/>
+<stop offset="1" stop-color="#226B91"/>
+</linearGradient>
+<clipPath id="clip0_0_4">
+<rect width="48" height="48" fill="white"/>
+</clipPath>
+<path id="stroke0_0_4" d="M21.3 10.5H26.7L28.05 14.3571L30.75 15.6429L34.8 14.3571L37.5 19.5L34.8 22.0714V25.9286L37.5 28.5L34.8 33.6429L30.75 32.3571L28.05 34.9286L26.7 37.5H21.3L19.95 33.6429L15.9 32.3571L13.2 33.6429L10.5 28.5L13.2 25.9286V22.0714L10.5 19.5L13.2 14.3571L17.25 15.6429L19.95 14.3571L21.3 10.5ZM29.4 24C29.4 22.4655 28.76 20.9939 27.6207 19.9089C26.4814 18.8238 24.9362 18.2143 23.325 18.2143C21.7138 18.2143 20.1686 18.8238 19.0293 19.9089C17.89 20.9939 17.25 22.4655 17.25 24C17.25 25.5345 17.89 27.0061 19.0293 28.0911C20.1686 29.1761 21.7138 29.7857 23.325 29.7857C24.9362 29.7857 26.4814 29.1761 27.6207 28.0911C28.76 27.0061 29.4 25.5345 29.4 24Z" fill-rule="evenodd" clip-rule="evenodd"/>
+</defs>
+</svg>
