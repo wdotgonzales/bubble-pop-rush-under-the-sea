@@ -128,6 +128,13 @@
   pointer-events: none;
 }
 
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
 .play-overlay-dim {
   background: rgb(3 31 74 / 0.55);
   pointer-events: auto;

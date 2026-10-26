@@ -17,6 +17,8 @@ interface Props {
   round: Pick<RoundStart, 'seed' | 'field_width' | 'field_height'>
   /** The round is over; called once, a moment after the time runs out. */
   onDone: (result: RoundResult) => void
+  /** Leave the round and go back to the start screen. Offered on the Paused screen. */
+  onGoHome: () => void
 }
 
 type Overlay = '3' | '2' | '1' | 'go' | 'paused' | 'time' | null
@@ -32,7 +34,7 @@ const TIME_UP_MS = 900
 const URGENT_SECONDS = 5
 
 /** The round on a canvas. The rules are in game/engine.ts and the drawing in game/render.ts. */
-export default function PlayScreen({ round, onDone }: Props) {
+export default function PlayScreen({ round, onDone, onGoHome }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const scoreBoxRef = useRef<HTMLDivElement>(null)
@@ -274,9 +276,14 @@ export default function PlayScreen({ round, onDone }: Props) {
       {overlay === 'paused' ? (
         <div className="play-overlay play-overlay-dim" role="dialog" aria-label="Paused">
           <p className="play-word">Paused</p>
-          <PearlButton variant="cream" font="roboto" glow="strong" width={240} height={72} fontSize={28} onClick={() => resumeRound.current()}>
-            CONTINUE
-          </PearlButton>
+          <div className="pause-actions">
+            <PearlButton variant="cream" font="roboto" glow="strong" width={240} height={72} fontSize={28} onClick={() => resumeRound.current()}>
+              CONTINUE
+            </PearlButton>
+            <PearlButton variant="aqua" width={240} height={64} fontSize={28} onClick={onGoHome}>
+              GO HOME
+            </PearlButton>
+          </div>
         </div>
       ) : (
         overlay && (

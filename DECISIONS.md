@@ -966,6 +966,39 @@ way off the game over screen was another round.
   screen back. That rule is `settleScreen` in `state/flow.ts` and is tested.
 - The next round fetched ahead while the game over screen was showing is kept, so DIVE IN is still quick.
 
+## GO HOME while paused, and a start screen with no phone box
+
+### GO HOME on the Paused screen
+The Paused screen (from switching apps, or from opening the settings window during a round) now has GO HOME
+under CONTINUE, so a player can leave a round without finishing it. The two are stacked, not side by side,
+because the screen is the same on every window size and this keeps the main action (CONTINUE, cream, bigger)
+above the way out (GO HOME, blue).
+- Leaving a round throws it away: it is never sent, because a round that was not finished has no score.
+  There is no "are you sure?" question: the player has already stopped the game on purpose to reach the
+  button, and the cost of a wrong tap is one round of thirty seconds. If that turns out to annoy people, a
+  confirmation is a small change in `PlayScreen`.
+- It works the same for a practice round.
+- The next round fetched ahead is kept, so DIVE IN is still quick afterwards.
+
+### The start screen picture
+On a wide window the start screen showed a darker column in the middle with hard vertical edges, like a
+phone drawn on the desktop. That was in the picture itself (`bg-landscape-start.jpg`, from the design's
+desktop start frame), not in the code: the column and the two side panels were three separate pictures
+placed side by side. I rebuilt the picture so they melt into each other:
+- At each of the two seams, the colour jump between the pictures is measured row by row, half of it is
+  taken out of each side, and the correction fades out over about 150 pixels, so the colours meet without a
+  step. A narrow horizontal blur around the seam then softens the last edge, where a light beam had been cut
+  off at the old boundary.
+- Measured: the difference between the two columns of pixels either side of each seam went from about 23
+  to about 0.4 (the picture's normal texture is 0.37), so no edge is left to see.
+- Same size and same file name, so no code changed. The original is in git history and the Figma frame is
+  unchanged (`6:2688`).
+- I left the game over picture alone. It has a much fainter version of the same edge at the top, but fixing
+  it softened the outline of the shell where the seam crosses it, which was worse than the faint edge.
+- On a very wide window (wider than about 2.3 to 1) the stage picture fades into a blurred copy of itself on
+  both sides, which can still show as a slightly darker band. That is the existing behaviour for odd window
+  shapes and is not new.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
