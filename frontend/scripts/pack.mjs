@@ -22,6 +22,21 @@ for (const required of ['index.html', 'fbapp-config.json']) {
   }
 }
 
+// A zip with the local development address baked in would load but never reach the backend.
+function bundledScripts(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) return bundledScripts(full)
+    return entry.name.endsWith('.js') ? [full] : []
+  })
+}
+for (const file of bundledScripts(dist)) {
+  if (/localhost:8000|127\.0\.0\.1:8000/.test(readFileSync(file, 'utf8'))) {
+    console.error(`${relative(root, file)} contains a localhost address. Refusing to pack a development build.`)
+    process.exit(1)
+  }
+}
+
 function walk(dir) {
   const files = []
   for (const name of readdirSync(dir).sort()) {

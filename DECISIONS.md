@@ -436,8 +436,12 @@ shows as a name is a separate decision (see the next PR).
 
 ### Production builds point at the production API
 Vite reads `frontend/.env` in every build, so the first Facebook zip had the local
-`http://localhost:8000` baked in. `frontend/.env.production` (committed, no secrets)
-overrides it for production builds.
+`http://localhost:8000` baked in. The fix is in the build, not in a second env file: `npm run build` runs Vite through
+`scripts/build.mjs`, which sets `VITE_API_BASE_URL` to an empty string. Variables that exist
+when Vite starts win over `.env` files, and `config.ts` treats empty as unset, so a build uses
+its default, the public API. `frontend/.env` stays the one file for local development, with
+nothing to flip before a build. `npm run pack` also refuses to zip a bundle that contains a
+localhost address. The production address lives only in `config.ts`.
 
 ### TypeScript is pinned to 6
 A fresh install pulls TypeScript 7, which `typescript-eslint` does not support yet, so
@@ -488,6 +492,86 @@ The database default stays `Diver`; it is only a placeholder now.
   uncertain, and the policy against storing names would still apply.
 - **Guest-1234 style names:** work, but read as anonymous. The themed names make the
   leaderboard feel like part of the game.
+
+## PR 9: Start and Game Over screens
+
+### What
+The Start screen and the Game Over screen with the top-10 leaderboard, built from the Figma
+frames in portrait (mobile) and landscape (desktop). The real flow is Start, then a
+placeholder where the game goes. The Game Over screen is complete but is not reachable
+until the gameplay PR wires it in; `?preview=start` and `?preview=over` show it now.
+
+### How the layout works
+- **A fixed stage, scaled.** Each screen is laid out in Figma pixels on a stage (390x844
+  portrait, 1024x559 or 1024x576 landscape) and scaled with one `transform: scale()` to fit
+  the window. This keeps the Figma proportions exact on any phone or browser size, and it
+  is the same approach the canvas will use. The scale is capped at 2.5 so nothing blows up
+  on a large monitor.
+- **Portrait or landscape** is picked from the window shape: landscape when width/height is
+  at least 1.15. Geometry for both lives in one file (`screens/geometry.ts`).
+- **Built in CSS where possible.** Buttons, panels, titles, bubbles and the leaderboard are
+  CSS and live text, so they stay sharp at any scale and the labels can change. Only the
+  background scenes, the shell and the character art are images.
+- **Fonts are bundled** with `@fontsource` (latin subsets only) instead of loaded from Google
+  Fonts. Inside Facebook the game must not depend on a third-party request, and the preload
+  step waits for the fonts so text never jumps.
+- **Boot preload never blocks.** `runPreload` times out a slow asset after 4 seconds and
+  never rejects, so a failed image cannot leave the player on the loading screen.
+
+### Leaderboard states
+Loading skeleton, error with a retry button, empty ("be the first"), and rows. Rank 1 is
+highlighted as in the design, the player's own row has a ring, and a player outside the top
+10 sees their rank pinned under the list. The list scrolls on a small screen; the pinned
+row is opaque so scrolling rows never show through.
+
+### Smaller choices
+- The gear button is a mute toggle, saved with the platform's `setData`. It is the only
+  setting the game has, so a settings screen would be empty.
+- The Share button only renders when a share handler exists, so it never shows as a dead
+  button before the share card PR.
+- Preview routes (`?preview=...`) exist so the screens can be reviewed without playing a
+  round: `layout`, `score`, `best`, `new` and `board=loading|error|empty` are supported.
+- The old connection check moved to `?debug=1`.
+
+### Known limits
+- **Desktop layout is approximate.** The Figma API call limit on the free plan ran out
+  before the desktop frames' details could be read, so the desktop layout follows
+  screenshots and layer sizes. The Game Over turtle on desktop reuses the mobile art and
+  leaves out the flippers that overlap the score pill.
+- **Backgrounds and the shell are 1x images.** They are soft gradients, so this is hard to
+  see, but they would be softer on a very high-density screen.
+- **Floating bubbles are CSS approximations** of the glossy bubbles in the design.
+- Character and icon art are SVGs fetched by `fetch-art.sh`; the download links Figma gives
+  out expire, so the files are committed and the script is not.
+
+## The API hostname changed to bubble-pop-rush.fyi
+
+### What happened
+The backend first lived at `bubble-pop-rush.xyz`, bought on Namecheap. The registrar sent a
+"verify your contact information" email that went unnoticed. When the deadline passed it
+cancelled and refunded the order, locked the account, and the name stopped resolving
+(NXDOMAIN on every public resolver). Verifying the email afterwards did not bring it back,
+and the name was taken by someone else within minutes. Nothing was wrong with the server:
+all containers stayed healthy throughout.
+
+### Decision
+Buy a new name at Cloudflare Registrar, where DNS, the proxy and the certificate already
+live, so the registrar, DNS and TLS are one account. The new name is `bubble-pop-rush.fyi`.
+The only places that name the host are the default in `frontend/src/config.ts` and the README
+link. The server, nginx and `CORS_ORIGINS` did not change, because CORS lists the game's
+origin, not the API's, and nginx answers any hostname.
+
+The zone needed the same two things as before: an `A` record to the server and SSL mode
+**Flexible**. A new zone does not start in Flexible, and until it was set the site returned
+Cloudflare error 521, because the server has no TLS on port 443.
+
+### Lessons
+- Verify the registrant email the moment a domain is bought. Registries suspend or cancel
+  an unverified domain after a short window.
+- Turn on auto-renew and keep the contact email current.
+- The host is set in one place, `config.ts`, so a future move is a one-line change.
+- The staged Facebook build from before the move calls a hostname that is no longer ours.
+  Replace staged builds after any hostname change.
 
 ## Known limits and what I would do with more time
 
