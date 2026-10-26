@@ -15,27 +15,30 @@ export const START = {
     title: { left: 40, top: 180.45, width: 310 },
     turtle: { left: 108.4, top: 398.45, width: 173.25, height: 122.1 } satisfies Box,
     best: { left: 24, top: 548.55, width: 342 },
-    button: { left: 65, top: 607.55, width: 260, height: 88, fontSize: 31 },
+    // DIVE IN is the big button; DASHBOARD sits under it, smaller, so the first thing to tap is clear.
+    button: { left: 65, top: 596, width: 260, height: 66, fontSize: 27 },
     sparkles: [
       { x: 244, y: -8, size: 20 },
-      { x: -4, y: 68, size: 13 },
+      { x: -4, y: 50, size: 13 },
     ] satisfies SparkleSpec[],
+    dashboard: { left: 85, top: 674, width: 220, height: 54, fontSize: 23 },
     settings: { left: 318, top: 24, size: 48 },
-    notice: { left: 24, top: 716, width: 342 },
-    practice: { left: 24, top: 752, width: 342 },
+    notice: { left: 24, top: 740, width: 342 },
+    practice: { left: 24, top: 774, width: 342 },
   },
   landscape: {
     title: { left: 387, top: 100, width: 250 },
     turtle: { left: 457, top: 268, width: 105, height: 74 } satisfies Box,
     best: { left: 387, top: 365, width: 250 },
-    button: { left: 410, top: 423, width: 205, height: 80, fontSize: 28 },
+    button: { left: 410, top: 399, width: 205, height: 54, fontSize: 24 },
     sparkles: [
       { x: 179, y: -7, size: 20 },
-      { x: 0, y: 60, size: 13 },
+      { x: 0, y: 40, size: 13 },
     ] satisfies SparkleSpec[],
+    dashboard: { left: 424, top: 461, width: 176, height: 44, fontSize: 20 },
     settings: { left: 614, top: 10, size: 37 },
-    notice: { left: 332, top: 504, width: 360 },
-    practice: { left: 332, top: 526, width: 360 },
+    notice: { left: 262, top: 510, width: 500 },
+    practice: { left: 332, top: 531, width: 360 },
   },
 } as const
 
@@ -67,6 +70,31 @@ export const OVER = {
     score: { left: 294, top: 282, width: 211, height: 83, fontSize: 29 },
     best: { left: 291, top: 383, width: 207, fontSize: 26 },
     board: { left: 667, top: 82, width: 280, height: 434 } satisfies Box,
+  },
+} as const
+
+/**
+ * The Dashboard: the top-10 page. On a phone it is one glass panel (the same one as the game over
+ * screen) with the header, the board and HOME laid out inside it, so only the sizes are set here.
+ * On the wide screen the board sits on the right and the title, the turtle and HOME in the left
+ * column, as on the game over screen. The board is wider than the game over one: names are
+ * longer here than "SeaExplorer" and there is room.
+ */
+export const DASHBOARD = {
+  portrait: {
+    panel: OVER.portrait.panel,
+    turtle: { width: 78, height: 55 },
+    titleFontSize: 42,
+    home: { width: 260, height: 60, fontSize: 32 },
+  },
+  landscape: {
+    panel: OVER.landscape.panel,
+    title: { left: 63, top: 96, width: 507, fontSize: 70 },
+    turtle: { left: 194, top: 196, width: 248, height: 183 } satisfies Box,
+    count: { left: 63, top: 392, width: 507 },
+    home: { left: 207, top: 436, width: 222, height: 70, fontSize: 34 },
+    // Tall enough for ten rows and the player's own row under them, which the game over board is not.
+    board: { left: 590, top: 76, width: 357, height: 442 } satisfies Box,
   },
 } as const
 

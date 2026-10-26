@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, NetworkError } from '../src/api/client'
-import { OUTDATED_BUILD_NOTICE, bestScoreLabel, personalBestLabel, saveLabel, startFailureLabel } from '../src/state/labels'
+import {
+  OUTDATED_BUILD_NOTICE,
+  bestScoreLabel,
+  diversLabel,
+  personalBestLabel,
+  saveLabel,
+  startFailureLabel,
+} from '../src/state/labels'
 import { mapLoad } from '../src/state/load'
 
 describe('bestScoreLabel', () => {
@@ -70,5 +77,21 @@ describe('saveLabel and the outdated notice', () => {
 
   it('tells the player to reload an outdated build', () => {
     expect(OUTDATED_BUILD_NOTICE).toContain('Reload')
+  })
+})
+
+describe('diversLabel', () => {
+  it('says nothing until somebody has a score', () => {
+    expect(diversLabel(0)).toBe('')
+    expect(diversLabel(-1)).toBe('')
+  })
+
+  it('counts the players, one or many', () => {
+    expect(diversLabel(1)).toBe('1 diver on the board')
+    expect(diversLabel(128)).toBe('128 divers on the board')
+  })
+
+  it('writes big counts with a separator', () => {
+    expect(diversLabel(12345)).toBe('12,345 divers on the board')
   })
 })

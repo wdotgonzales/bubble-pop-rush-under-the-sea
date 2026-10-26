@@ -20,5 +20,9 @@ export const SAMPLE_BOARD: Leaderboard = {
     score: Number(score),
     is_me: false,
   })),
+  page: 1,
+  page_size: 10,
+  total: 128,
+  total_pages: 13,
   me: { rank: 37, best_score: 22 },
 }

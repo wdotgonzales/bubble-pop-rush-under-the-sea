@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CONFIG, generateSchedule, isValidField } from '@shared/spawn.js'
 import { MAX_AGE_MS, takeUsable } from '../src/game/prefetch'
 import { practiceRound } from '../src/game/practice'
-import { applyOutcome, homeScreen, settleScreen, type FlowScreen } from '../src/state/flow'
+import { applyOutcome, dashboardScreen, homeScreen, settleScreen, type FlowScreen } from '../src/state/flow'
 import { PRACTICE_LABEL, saveLabel } from '../src/state/labels'
 import type { RoundStart } from '../src/types'
 
@@ -144,5 +144,22 @@ describe('going home', () => {
 
   it('leaves the game over screen of a later round alone', () => {
     expect(settleScreen(OVER, 'r0', { status: 'queued' }) === OVER).toBe(true)
+  })
+})
+
+describe('the Dashboard screen', () => {
+  it('is its own screen, with nothing to carry', () => {
+    expect(dashboardScreen()).toEqual({ name: 'dashboard' })
+  })
+
+  it('is left alone by a score arriving late', () => {
+    // A score saved while the player is looking at the board must not pull them to a game over screen.
+    const result = { round_id: 'r1', status: 'accepted' as const, score: 7, best_score: 12, is_new_best: false, rank: 3 }
+    expect(settleScreen(dashboardScreen(), 'r1', { status: 'saved', result })).toEqual({ name: 'dashboard' })
+    expect(settleScreen(dashboardScreen(), 'r1', { status: 'queued' })).toEqual({ name: 'dashboard' })
+  })
+
+  it('goes back to a start screen with no problem to report', () => {
+    expect(homeScreen()).toEqual({ name: 'start', notice: null, canPractice: false })
   })
 })

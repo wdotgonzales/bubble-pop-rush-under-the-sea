@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { toBoardView } from '../src/state/leaderboardView'
-import type { Leaderboard, LeaderboardEntry } from '../src/types'
+import { toBoardView, type BoardSource } from '../src/state/leaderboardView'
+import type { LeaderboardEntry } from '../src/types'
 
 function entry(rank: number, name: string, score: number, isMe = false): LeaderboardEntry {
   return { rank, display_name: name, avatar_url: null, score, is_me: isMe }
@@ -8,7 +8,7 @@ function entry(rank: number, name: string, score: number, isMe = false): Leaderb
 
 describe('toBoardView', () => {
   it('keeps the order and marks only rank 1 as the leader', () => {
-    const board: Leaderboard = {
+    const board: BoardSource = {
       entries: [entry(1, 'A', 55), entry(2, 'B', 52), entry(3, 'C', 49)],
       me: { rank: null, best_score: 0 },
     }
@@ -18,7 +18,7 @@ describe('toBoardView', () => {
   })
 
   it('marks the player own row and pins nothing when they are listed', () => {
-    const board: Leaderboard = {
+    const board: BoardSource = {
       entries: [entry(1, 'A', 55), entry(2, 'Me', 52, true)],
       me: { rank: 2, best_score: 52 },
     }
@@ -28,7 +28,7 @@ describe('toBoardView', () => {
   })
 
   it('pins the player place when they are outside the top ten', () => {
-    const board: Leaderboard = {
+    const board: BoardSource = {
       entries: [entry(1, 'A', 55)],
       me: { rank: 37, best_score: 12 },
     }
@@ -37,7 +37,7 @@ describe('toBoardView', () => {
   })
 
   it('pins nothing for a player with no score yet', () => {
-    const board: Leaderboard = { entries: [entry(1, 'A', 55)], me: { rank: null, best_score: 0 } }
+    const board: BoardSource = { entries: [entry(1, 'A', 55)], me: { rank: null, best_score: 0 } }
     expect(toBoardView(board).pinned).toBeNull()
   })
 
@@ -47,7 +47,7 @@ describe('toBoardView', () => {
   })
 
   it('never shows a blank name', () => {
-    const board: Leaderboard = {
+    const board: BoardSource = {
       entries: [entry(1, '   ', 5), entry(2, '', 4)],
       me: { rank: null, best_score: 0 },
     }
@@ -55,12 +55,19 @@ describe('toBoardView', () => {
   })
 
   it('gives every row a distinct key', () => {
-    const board: Leaderboard = {
+    const board: BoardSource = {
       entries: [entry(1, 'Same', 9), entry(2, 'Same', 9)],
       me: { rank: 3, best_score: 1 },
     }
     const view = toBoardView(board)
     const keys = [...view.rows, view.pinned].map((r) => r?.key)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('shows only the rows for someone who is not signed in, with no place of their own to pin', () => {
+    const board: BoardSource = { entries: [entry(1, 'A', 55), entry(2, 'B', 52)], me: null }
+    const view = toBoardView(board)
+    expect(view.rows).toHaveLength(2)
+    expect(view.pinned).toBeNull()
   })
 })

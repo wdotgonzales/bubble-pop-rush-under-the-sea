@@ -3,7 +3,7 @@
 // identical to the design on any device, and bubbles round.
 
 export type Layout = 'portrait' | 'landscape'
-export type ScreenId = 'start' | 'over'
+export type ScreenId = 'start' | 'over' | 'dashboard'
 
 export interface DesignSize {
   readonly width: number
@@ -15,10 +15,13 @@ export const DESIGN_SIZE: Record<Layout, Record<ScreenId, DesignSize>> = {
   portrait: {
     start: { width: 390, height: 844 },
     over: { width: 390, height: 844 },
+    dashboard: { width: 390, height: 844 },
   },
   landscape: {
     start: { width: 1024, height: 559 },
     over: { width: 1024, height: 576 },
+    // The same stage as the game over screen: its picture has the big shell the panel sits on.
+    dashboard: { width: 1024, height: 576 },
   },
 }
 

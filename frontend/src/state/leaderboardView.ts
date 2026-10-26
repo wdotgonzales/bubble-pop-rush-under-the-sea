@@ -23,8 +23,11 @@ export interface BoardView {
 
 const FALLBACK_NAME = 'Diver'
 
+/** The parts of the API answer the board is drawn from. */
+export type BoardSource = Pick<Leaderboard, 'entries' | 'me'>
+
 /** Turn the API answer into what the leaderboard draws. */
-export function toBoardView(board: Leaderboard): BoardView {
+export function toBoardView(board: BoardSource): BoardView {
   const rows: BoardRow[] = board.entries.map((entry) => ({
     key: String(entry.rank),
     rank: entry.rank,
@@ -36,7 +39,7 @@ export function toBoardView(board: Leaderboard): BoardView {
 
   const listed = rows.some((row) => row.isMe)
   const pinned: BoardRow | null =
-    !listed && board.me.rank !== null
+    !listed && board.me !== null && board.me.rank !== null
       ? {
           key: 'me',
           rank: board.me.rank,

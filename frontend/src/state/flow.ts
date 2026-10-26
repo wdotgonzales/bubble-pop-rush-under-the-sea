@@ -19,6 +19,8 @@ export type FlowScreen =
       /** The last start did not work: offer a round that needs no server. */
       canPractice: boolean
     }
+  /** The top-10 page, opened from the start screen. */
+  | { name: 'dashboard' }
   | { name: 'play'; round: RoundStart; practice: boolean }
   | { name: 'over'; roundId: string; score: number; save: SaveState }
 
@@ -36,6 +38,11 @@ export interface View {
  */
 export function settleScreen(current: FlowScreen, roundId: string, outcome: ScoreOutcome): FlowScreen {
   return current.name === 'over' && current.roundId === roundId ? applyOutcome(current, outcome) : current
+}
+
+/** The Dashboard, as it is when the player opens it. */
+export function dashboardScreen(): FlowScreen {
+  return { name: 'dashboard' }
 }
 
 /** The start screen as it is when the player chooses to go home: no problem to report. */
