@@ -36,6 +36,9 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        # Read from the .env next to this file; the build stops with a message if it is missing.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     container_name: game_frontend
     restart: always
     networks:
@@ -60,4 +63,4 @@ volumes:
 
 networks:
   game-net:
-    driver: bridge
+    driver: bridge

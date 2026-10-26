@@ -48,7 +48,7 @@ export default function DebugScreen() {
         <dt>Origin</dt>
         <dd className="break-all">{window.location.origin}</dd>
         <dt>API</dt>
-        <dd className="break-all">{API_BASE_URL}</dd>
+        <dd className="break-all">{API_BASE_URL || '(not set: VITE_API_BASE_URL)'}</dd>
       </dl>
 
       <ol className="flex flex-col gap-2">

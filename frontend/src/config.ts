@@ -1,9 +1,9 @@
-// Where the backend lives. Set VITE_API_BASE_URL in frontend/.env for local
-// development (for example http://localhost:8000). The default is the public
-// backend, so a plain production build, including the one uploaded to Facebook,
-// needs no configuration.
-const DEFAULT_API_BASE_URL = 'https://bubble-pop-rush.fyi/api'
+// Where the backend lives. It is read from VITE_API_BASE_URL and nowhere else:
+//   frontend/.env              local development (npm run dev), for example http://localhost:8000
+//   frontend/.env.production   builds (npm run build / pack); Vite uses it instead of .env then
+//   the build environment      Docker and CI pass it in as a build argument
+// There is no default. A build without an address stops (scripts/build.mjs), and a running game
+// without one says so (see createServices), rather than quietly talking to the wrong backend.
+import { normalizeApiBaseUrl } from './api/baseUrl'
 
-export const API_BASE_URL: string = (
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
-).replace(/\/+$/, '')
+export const API_BASE_URL: string = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)

@@ -8,6 +8,9 @@ COPY frontend/package*.json ./
 RUN npm install --legacy-peer-deps
 COPY shared /app/shared
 COPY frontend/ ./
+# The backend address is configuration, passed in at build time (see deploy.yml), not written in code.
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # Stage 2: serve the build with nginx
