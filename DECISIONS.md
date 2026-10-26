@@ -629,7 +629,9 @@ score replaces it, so what the player sees at the end is what is saved.
 - **The score and timer have a strip of their own.** The field is fitted below it, and the
   game asks for a field that fits the space that is left, so a bubble can never spawn behind
   them (the first version drew the field under the HUD). The strip grows with the safe-area
-  inset on a phone with a notch.
+  inset on a phone with a notch. The score and time are small boxes (56 px tall) side by side in the
+  top-left corner, with a gap between them, and the settings button is alone in the top-right
+  corner, so the middle of a narrow screen stays clear and the strip takes less of the field.
 - **Canvas for the bubbles, DOM for the text.** The score and timer are normal elements
   over the canvas, updated directly when they change, so no frame re-renders React.
   Only the sound button takes taps.

@@ -285,7 +285,7 @@ export default function PlayScreen({ round, onDone, onGoHome }: Props) {
             30
           </span>
         </div>
-        <SettingsButton size={46} />
+        <SettingsButton size={44} />
       </div>
 
       {overlay === 'paused' ? (
