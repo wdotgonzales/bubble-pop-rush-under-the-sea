@@ -2,6 +2,7 @@ import { mapLoad } from '../state/load'
 import { saveLabel } from '../state/labels'
 import { useGameData } from '../state/useGameData'
 import { useMuted } from '../state/useMuted'
+import { useArtReady } from '../state/useArtReady'
 import { useRoundFlow } from '../state/useRoundFlow'
 import { useScoreSync } from '../state/useScoreSync'
 import { useServices } from '../state/useServices'
@@ -20,11 +21,12 @@ export default function Game() {
   const [muted, toggleMuted] = useMuted(services?.platform ?? null, data.boot === 'ready')
   const { screen, starting, begin, beginPractice, finish } = useRoundFlow(services, data.refresh)
   useScoreSync(services, data.boot === 'ready')
+  const artReady = useArtReady()
 
-  // Until the pictures are ready, show nothing but the sea colour. Inside Facebook this is hidden
-  // behind its own loading screen; in a browser it is a moment. It stops the pictures being swapped
-  // for their in-memory copies while the screen is already showing.
-  if (data.boot === 'booting') return <div className="boot-blank" />
+  // Until the pictures are ready, show nothing but the sea colour: a moment, and at most a few
+  // seconds. It stops the pictures being swapped for their in-memory copies while the screen is
+  // already showing. It waits for the pictures only, never for Facebook (see useArtReady).
+  if (!artReady) return <div className="boot-blank" />
 
   if (screen.name === 'play') {
     const { round, practice } = screen
