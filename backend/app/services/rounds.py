@@ -61,8 +61,12 @@ class SubmitResult:
     rank: int | None
 
 
-def start_round(db: Session, player: Player) -> Round:
-    """Issue a new round: a fresh random seed and an expiry.
+def start_round(
+    db: Session, player: Player, field: config.Field = config.DEFAULT_FIELD
+) -> Round:
+    """Issue a new round: a fresh random seed, the play field it uses, and an expiry.
+
+    `field` must already have been checked with config.is_valid_field.
 
     The player's row is locked first, so two simultaneous requests cannot both
     slip under the rate limit.
@@ -85,6 +89,8 @@ def start_round(db: Session, player: Player) -> Round:
         player_id=player.id,
         seed=secrets.randbits(32),
         config_version=config.CONFIG_VERSION,
+        field_width=field.width,
+        field_height=field.height,
         expires_at=func.now() + ROUND_LIFETIME,
     )
     db.add(new_round)
@@ -142,7 +148,7 @@ def submit_round(
     if now - row.started_at < minimum:
         reject(TOO_EARLY)
 
-    verdict = validate_round(row.seed, raw_taps)
+    verdict = validate_round(row.seed, raw_taps, config.Field(row.field_width, row.field_height))
     if not verdict.valid:
         reject(verdict.reason or "rejected")
 

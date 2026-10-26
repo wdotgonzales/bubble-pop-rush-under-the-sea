@@ -26,6 +26,9 @@ export interface RoundStart {
   round_id: string
   seed: number
   config_version: number
+  /** The play field this round uses, in game units. The schedule must be built with it. */
+  field_width: number
+  field_height: number
   duration_ms: number
   started_at: string
   expires_at: string

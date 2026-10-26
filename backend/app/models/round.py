@@ -51,6 +51,12 @@ class Round(Base):
     seed: Mapped[int] = mapped_column(BigInteger)
     # Which version of the shared game config built this round's schedule.
     config_version: Mapped[int] = mapped_column(Integer)
+    # The shape of the play field this round uses, in game units. The game asks for one that
+    # fits its window; the server checks it against the bounds in app.game.config. The
+    # schedule and the tap check both need it, so it is kept with the round. The defaults
+    # are the original portrait field, which is what rounds from before this existed used.
+    field_width: Mapped[int] = mapped_column(Integer, server_default=text("10000"))
+    field_height: Mapped[int] = mapped_column(Integer, server_default=text("21640"))
     status: Mapped[str] = mapped_column(Text, server_default=text("'started'"))
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

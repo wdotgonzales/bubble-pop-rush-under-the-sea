@@ -19,20 +19,26 @@ from app.game import config  # noqa: E402
 from app.game.replay import Tap, replay  # noqa: E402
 from app.game.spawn import Mulberry32, generate_schedule, radius_at  # noqa: E402
 
+FIELD = config.Field
+
 OUT = Path(__file__).resolve().parents[2] / "shared" / "spawn-vectors.json"
 
 SEEDS = [0, 1, 42, 123456789, 2147483648, 4294967295]
+# Other field shapes: a desktop window, a tablet held upright, the largest, the smallest.
+OTHER_FIELDS = [FIELD(29_000, 14_000), FIELD(16_732, 20_261), FIELD(64_000, 30_000), FIELD(8_000, 8_000)]
+OTHER_FIELD_SEEDS = [42, 123456789]
 PRNG_SEEDS = [0, 1, 42, 4294967295]
 PRNG_DRAWS = 8
 RADIUS_PROBE_SEED = 42
 RADIUS_PROBE_BUBBLES = 5
 
 
-def _replay_case(name: str, seed: int, taps: list[Tap]) -> dict:
-    score, popped = replay(generate_schedule(seed), taps)
+def _replay_case(name: str, seed: int, taps: list[Tap], field: config.Field = config.DEFAULT_FIELD) -> dict:
+    score, popped = replay(generate_schedule(seed, field), taps)
     return {
         "name": name,
         "seed": seed,
+        "field": [field.width, field.height],
         "taps": [[t.t, t.x, t.y] for t in taps],
         "score": score,
         "popped": list(popped),
@@ -69,6 +75,29 @@ def _replay_cases() -> list[dict]:
             )
         taps.sort(key=lambda tap: (tap.t, tap.x, tap.y))
         cases.append(_replay_case("messy human", seed, taps))
+
+    # The same two kinds of player on every other field shape.
+    for field in OTHER_FIELDS:
+        label = f"{field.width}x{field.height}"
+        for seed in OTHER_FIELD_SEEDS:
+            schedule = generate_schedule(seed, field)
+            taps = [Tap(b.spawn_ms + b.lifetime_ms // 3, b.x, b.y) for b in schedule]
+            cases.append(_replay_case(f"centre taps {label}", seed, taps, field))
+        rng = Mulberry32(11)
+        taps = []
+        for b in generate_schedule(OTHER_FIELD_SEEDS[0], field):
+            if rng.below(100) < 75:
+                t = b.spawn_ms + rng.below(b.lifetime_ms + 60)
+                reach = b.radius * 13 // 10
+                x = min(field.width, max(0, b.x + rng.below(2 * reach + 1) - reach))
+                y = min(field.height, max(0, b.y + rng.below(2 * reach + 1) - reach))
+                taps.append(Tap(t, x, y))
+        for _ in range(25):
+            taps.append(
+                Tap(rng.below(config.ROUND_DURATION_MS + 1), rng.below(field.width + 1), rng.below(field.height + 1))
+            )
+        taps.sort(key=lambda tap: (tap.t, tap.x, tap.y))
+        cases.append(_replay_case(f"messy human {label}", OTHER_FIELD_SEEDS[0], taps, field))
 
     # Edges of one bubble: exact radius, one past it, spawn instant, grace limits.
     schedule = generate_schedule(5)
@@ -112,8 +141,22 @@ def build() -> dict:
         prng.append({"seed": seed, "first": [rng.next_u32() for _ in range(PRNG_DRAWS)]})
 
     schedules = [
-        {"seed": s, "bubbles": [b.as_vector() for b in generate_schedule(s)]} for s in SEEDS
+        {
+            "seed": s,
+            "field": [config.FIELD_WIDTH, config.FIELD_HEIGHT],
+            "bubbles": [b.as_vector() for b in generate_schedule(s)],
+        }
+        for s in SEEDS
     ]
+    for field in OTHER_FIELDS:
+        for s in OTHER_FIELD_SEEDS:
+            schedules.append(
+                {
+                    "seed": s,
+                    "field": [field.width, field.height],
+                    "bubbles": [b.as_vector() for b in generate_schedule(s, field)],
+                }
+            )
 
     schedule = generate_schedule(RADIUS_PROBE_SEED)
     probes = []
@@ -153,7 +196,9 @@ def dumps(doc: dict) -> str:
     blocks = []
     for s in doc["schedules"]:
         rows = ",\n".join("      " + json.dumps(b, separators=(",", ":")) for b in s["bubbles"])
-        blocks.append(f'    {{"seed": {s["seed"]}, "bubbles": [\n{rows}\n    ]}}')
+        blocks.append(
+            f'    {{"seed": {s["seed"]}, "field": {json.dumps(s["field"])}, "bubbles": [\n{rows}\n    ]}}'
+        )
     lines.append(",\n".join(blocks))
     lines.append("  ],")
     lines.append('  "radius": [')
@@ -164,7 +209,7 @@ def dumps(doc: dict) -> str:
     for r in doc["replays"]:
         taps = ",\n".join("        " + json.dumps(t, separators=(",", ":")) for t in r["taps"])
         head = json.dumps(
-            {k: r[k] for k in ("name", "seed", "score", "popped")}, separators=(", ", ": ")
+            {k: r[k] for k in ("name", "seed", "field", "score", "popped")}, separators=(", ", ": ")
         )[:-1]
         rows.append(f'    {head}, "taps": [\n{taps}\n    ]}}')
     lines.append(",\n".join(rows))

@@ -27,8 +27,9 @@ def _auth(player):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _start(client, player):
-    response = client.post("/rounds/start", headers=_auth(player))
+def _start(client, player, field=None):
+    body = None if field is None else {"field_width": field[0], "field_height": field[1]}
+    response = client.post("/rounds/start", headers=_auth(player), json=body)
     assert response.status_code == 201
     return response.json()
 
@@ -53,11 +54,11 @@ def _fresh(db, player):
     return db.get(Player, player.id)
 
 
-def honest_taps(seed):
+def honest_taps(seed, field=config.DEFAULT_FIELD):
     """Tap the centre of every bubble shortly after it appears."""
     return [
         {"t": b.spawn_ms + 100, "x": b.x, "y": b.y}
-        for b in generate_schedule(seed)
+        for b in generate_schedule(seed, field)
         if b.spawn_ms + 100 <= config.ROUND_DURATION_MS
     ]
 
@@ -70,12 +71,12 @@ def _submit(client, player, round_id, taps, duration=30_000):
     )
 
 
-def _play(client, db, player, taps=None):
+def _play(client, db, player, taps=None, field=None):
     """Start a round, wait it out, and submit. Returns (round, response)."""
-    started = _start(client, player)
+    started = _start(client, player, field)
     _age(db, started["round_id"])
     if taps is None:
-        taps = honest_taps(started["seed"])
+        taps = honest_taps(started["seed"], config.Field(started["field_width"], started["field_height"]))
     return started, _submit(client, player, started["round_id"], taps)
 
 
@@ -222,7 +223,7 @@ def test_a_tied_score_keeps_the_earlier_one(client, db, monkeypatch):
     monkeypatch.setattr(
         rounds_service,
         "validate_round",
-        lambda seed, taps: Verdict(valid=True, score=10, tap_count=len(taps)),
+        lambda seed, taps, field: Verdict(valid=True, score=10, tap_count=len(taps)),
     )
     player = _player(db)
     first, _ = _play(client, db, player, taps=[])
@@ -351,6 +352,56 @@ def test_an_expired_round_is_gone(client, db):
     assert _fresh(db, player).best_score == 0
     # And it stays gone.
     assert _submit(client, player, started["round_id"], []).status_code == 410
+
+
+# --- Rounds on other field shapes ----------------------------------------------
+
+
+def test_a_round_on_a_wide_field_is_scored_against_that_field(client, db):
+    player = _player(db)
+    started, response = _play(client, db, player, field=(29_000, 14_000))
+
+    assert response.status_code == 200
+    wide = config.Field(29_000, 14_000)
+    expected = validate_round(started["seed"], honest_taps(started["seed"], wide), wide).score
+    assert response.json()["score"] == expected > 0
+    assert _row(db, started["round_id"]).score == expected
+
+
+def test_taps_outside_the_rounds_own_field_are_refused(client, db):
+    player = _player(db)
+    started = _start(client, player)  # the default portrait field
+    _age(db, started["round_id"])
+
+    response = _submit(client, player, started["round_id"], [{"t": 500, "x": 25_000, "y": 100}])
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "tap_out_of_range"
+
+
+def test_the_same_taps_are_fine_on_a_round_with_a_wide_field(client, db):
+    player = _player(db)
+    started = _start(client, player, (29_000, 14_000))
+    _age(db, started["round_id"])
+
+    response = _submit(client, player, started["round_id"], [{"t": 500, "x": 25_000, "y": 100}])
+
+    assert response.status_code == 200
+
+
+def test_a_player_cannot_play_one_field_and_be_checked_on_another(client, db):
+    # Taps from a wide-field round, sent for a portrait round, are judged on the portrait
+    # schedule: they are valid taps but they mostly miss.
+    player = _player(db)
+    wide = config.Field(29_000, 14_000)
+    started = _start(client, player)
+    _age(db, started["round_id"])
+    taps = [t for t in honest_taps(started["seed"], wide) if t["x"] <= config.FIELD_WIDTH]
+
+    response = _submit(client, player, started["round_id"], taps)
+
+    assert response.status_code == 200
+    assert response.json()["score"] < validate_round(started["seed"], honest_taps(started["seed"])).score // 2
 
 
 def test_a_round_from_an_older_config_is_refused_with_409(client, db):

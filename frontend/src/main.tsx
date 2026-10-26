@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './fonts'
 import './index.css'
 import './ui/ui.css'
+import './ui/play.css'
 import App from './App'
 
 const root = document.getElementById('root')

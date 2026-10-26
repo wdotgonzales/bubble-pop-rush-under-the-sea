@@ -15,8 +15,12 @@ interface Props {
   score: number
   bestScore: number
   isNewBest: boolean
+  /** Replaces the personal best line, for example while the score is still being saved. */
+  bestLabel?: string
   board: Load<LeaderboardData>
   onPlayAgain: () => void
+  /** The next round is being fetched: PLAY AGAIN waits. */
+  starting?: boolean
   /** Share is only offered when there is something to do with the tap. */
   onShare?: () => void
   onRetryBoard: () => void
@@ -31,12 +35,14 @@ export default function GameOverScreen({
   score,
   bestScore,
   isNewBest,
+  bestLabel,
   board,
   onPlayAgain,
+  starting = false,
   onShare,
   onRetryBoard,
 }: Props) {
-  const best = personalBestLabel(score, bestScore, isNewBest)
+  const best = bestLabel ?? personalBestLabel(score, bestScore, isNewBest)
 
   if (layout === 'portrait') {
     const g = OVER.portrait
@@ -76,9 +82,10 @@ export default function GameOverScreen({
               height={g.button.height}
               fontSize={g.button.fontSize}
               sparkles={g.playSparkles}
+              disabled={starting}
               onClick={onPlayAgain}
             >
-              PLAY AGAIN
+              {starting ? 'DIVING…' : 'PLAY AGAIN'}
             </PearlButton>
           </div>
 
@@ -133,9 +140,10 @@ export default function GameOverScreen({
           height={g.play.height}
           fontSize={g.play.fontSize}
           sparkles={g.playSparkles}
+          disabled={starting}
           onClick={onPlayAgain}
         >
-          PLAY AGAIN
+          {starting ? 'DIVING…' : 'PLAY AGAIN'}
         </PearlButton>
       </div>
 

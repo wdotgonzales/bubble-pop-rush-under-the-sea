@@ -440,27 +440,6 @@
   text-shadow: 0.5px 1px 1px #001e34;
 }
 
-.stub {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-}
-
-.stub-text {
-  margin: 0;
-  padding: 0 40px;
-  text-align: center;
-  font-family: var(--font-body);
-  font-weight: 900;
-  font-size: 22px;
-  color: var(--c-best-score);
-  text-shadow: 1px 2px 1px #00223f;
-}
-
 /* ---------- Game over ---------- */
 
 .shell {

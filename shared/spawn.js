@@ -8,15 +8,19 @@
 //   - integers only; no floating point anywhere in this file;
 //   - every bubble consumes random draws in the same order:
 //     kind, x, y, then the gap to the next spawn;
+//   - the field's width and height only decide the size of the x and y draws;
 //   - Math.floor(a / b) is used only on non-negative integers.
 //
 // Check it against the server's output with:  node shared/check-vectors.mjs
 
 export const CONFIG = {
-  version: 3,
+  version: 4,
   duration_ms: 30000,
   field_width: 10000,
   field_height: 21640,
+  field_min: 8000,
+  field_max: 64000,
+  field_max_ratio: 3,
   initial_delay_ms: 400,
   spawn_jitter_permille: 200,
   hit_min_radius: 900,
@@ -31,6 +35,17 @@ export const CONFIG = {
     { id: 1, name: 'pearl', points: 3, radius: 1400, lifetime_pct: 70, chance_permille: 150 },
   ],
 };
+
+/** The default field: the portrait phone layout. A round can ask the server for another shape. */
+export const DEFAULT_FIELD = { width: CONFIG.field_width, height: CONFIG.field_height };
+
+/** Is this a field shape the server will play on? Same rule as app.game.config.is_valid_field. */
+export function isValidField(width, height) {
+  for (const side of [width, height]) {
+    if (!Number.isInteger(side) || side < CONFIG.field_min || side > CONFIG.field_max) return false;
+  }
+  return Math.max(width, height) <= CONFIG.field_max_ratio * Math.min(width, height);
+}
 
 /** mulberry32: returns a function that yields unsigned 32-bit integers. */
 export function mulberry32(seed) {
@@ -53,8 +68,8 @@ function phaseAt(timeMs) {
   return CONFIG.phases[CONFIG.phases.length - 1];
 }
 
-/** Every bubble of a round, in spawn order. */
-export function generateSchedule(seed) {
+/** Every bubble of a round, in spawn order, inside `field` ({ width, height }). */
+export function generateSchedule(seed, field = DEFAULT_FIELD) {
   const next = mulberry32(seed);
   const below = (n) => next() % n;
   const [standard, pearl] = CONFIG.kinds;
@@ -65,8 +80,8 @@ export function generateSchedule(seed) {
   while (t < CONFIG.duration_ms) {
     const phase = phaseAt(t);
     const kind = below(1000) < pearl.chance_permille ? pearl : standard;
-    const spanX = CONFIG.field_width - 2 * kind.radius + 1;
-    const spanY = CONFIG.field_height - 2 * kind.radius + 1;
+    const spanX = field.width - 2 * kind.radius + 1;
+    const spanY = field.height - 2 * kind.radius + 1;
     const x = kind.radius + below(spanX);
     const y = kind.radius + below(spanY);
     bubbles.push({

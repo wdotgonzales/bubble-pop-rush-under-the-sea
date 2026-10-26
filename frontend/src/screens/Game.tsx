@@ -1,21 +1,54 @@
-import { useState } from 'react'
 import { mapLoad } from '../state/load'
+import { saveLabel } from '../state/labels'
 import { useGameData } from '../state/useGameData'
 import { useMuted } from '../state/useMuted'
+import { useRoundFlow } from '../state/useRoundFlow'
 import { useServices } from '../state/useServices'
 import { usePickedLayout } from '../ui/usePickedLayout'
-import GameStub from './GameStub'
+import { useViewport } from '../ui/useViewport'
+import GameOverScreen from './GameOverScreen'
+import PlayScreen from './PlayScreen'
 import StartScreen from './StartScreen'
 
-/** The real game: the start screen now, gameplay and game over in the next PRs. */
+/** The real game: start screen, a round, and the game over screen with the leaderboard. */
 export default function Game() {
   const { services, error } = useServices()
   const data = useGameData(services, error)
   const layout = usePickedLayout()
+  const viewport = useViewport()
   const [muted, toggleMuted] = useMuted(services?.platform ?? null, data.boot === 'ready')
-  const [screen, setScreen] = useState<'start' | 'game'>('start')
+  const { screen, starting, begin, finish } = useRoundFlow(services, data.refresh)
 
-  if (screen === 'game') return <GameStub layout={layout} onBack={() => setScreen('start')} />
+  if (screen.name === 'play') {
+    const { round } = screen
+    return (
+      <PlayScreen
+        key={round.round_id}
+        round={round}
+        muted={muted}
+        onToggleMute={toggleMuted}
+        onDone={(result) => finish(round, result)}
+      />
+    )
+  }
+
+  if (screen.name === 'over') {
+    const { save } = screen
+    const knownBest = data.me.status === 'ready' ? data.me.data.player.best_score : 0
+    return (
+      <GameOverScreen
+        layout={layout}
+        score={screen.score}
+        bestScore={save.status === 'saved' ? save.result.best_score : knownBest}
+        isNewBest={save.status === 'saved' && save.result.is_new_best}
+        bestLabel={save.status === 'saved' ? undefined : saveLabel(save.status)}
+        board={data.board}
+        starting={starting}
+        onPlayAgain={() => void begin(viewport)}
+        onRetryBoard={data.refresh}
+      />
+    )
+  }
 
   return (
     <StartScreen
@@ -23,8 +56,9 @@ export default function Game() {
       bestScore={mapLoad(data.me, (me) => me.player.best_score)}
       muted={muted}
       onToggleMute={toggleMuted}
-      onPlay={() => setScreen('game')}
-      notice={data.boot === 'failed' ? 'Not connected to Facebook. Scores will not be saved.' : null}
+      onPlay={() => void begin(viewport)}
+      starting={starting}
+      notice={screen.notice ?? (data.boot === 'failed' ? 'Not connected to Facebook. Scores will not be saved.' : null)}
     />
   )
 }
