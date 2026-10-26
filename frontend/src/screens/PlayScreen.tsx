@@ -1,12 +1,12 @@
 import { radiusAt } from '@shared/spawn.js'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useSound } from '../audio/useSound'
 import { Effects } from '../game/effects'
 import { GameRound, type RoundEvents, type RoundResult } from '../game/engine'
 import { fitField, toField, type FieldFit } from '../game/fit'
 import { HUD_GAP_PX, HUD_PILL_PX } from '../game/hud'
 import { isPearl, tintFor } from '../game/palette'
 import { drawFrame, drawnPosition } from '../game/render'
-import { Sound } from '../game/sound'
 import type { RoundStart } from '../types'
 import { art } from '../ui/art'
 import PearlButton from '../ui/PearlButton'
@@ -15,8 +15,6 @@ import SettingsButton from '../ui/SettingsButton'
 interface Props {
   /** The round the server issued: its seed and the play field it uses. */
   round: Pick<RoundStart, 'seed' | 'field_width' | 'field_height'>
-  muted: boolean
-  onToggleMute: () => void
   /** The round is over; called once, a moment after the time runs out. */
   onDone: (result: RoundResult) => void
 }
@@ -34,7 +32,7 @@ const TIME_UP_MS = 900
 const URGENT_SECONDS = 5
 
 /** The round on a canvas. The rules are in game/engine.ts and the drawing in game/render.ts. */
-export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props) {
+export default function PlayScreen({ round, onDone }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
   const scoreBoxRef = useRef<HTMLDivElement>(null)
@@ -45,13 +43,18 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
   const [overlay, setOverlay] = useState<Overlay>('3')
 
   // The loop below starts once per round, so it reads what changes between renders from here.
-  const latest = useRef({ muted, onDone })
-  const sound = useRef<Sound | null>(null)
+  const { engine, settingsOpen } = useSound()
+  const latest = useRef({ settingsOpen, onDone })
   const resumeRound = useRef<() => void>(() => undefined)
+  const interruptRound = useRef<() => void>(() => undefined)
   useEffect(() => {
-    latest.current = { muted, onDone }
-    if (sound.current) sound.current.muted = muted
+    latest.current = { settingsOpen, onDone }
   })
+
+  // Opening the settings window stops the round, like switching to another app does.
+  useEffect(() => {
+    if (settingsOpen) interruptRound.current()
+  }, [settingsOpen])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -61,9 +64,6 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
     // The canvas draws the score text in this font, so have it ready.
     void document.fonts?.load("40px 'Lilita One'").catch(() => undefined)
 
-    const audio = new Sound()
-    audio.muted = latest.current.muted
-    sound.current = audio
     const effects = new Effects()
 
     let shown: Overlay = '3'
@@ -86,12 +86,12 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
           points: event.bubble.points,
           streak: event.streak,
         })
-        audio.pop(event.streak, isPearl(event.bubble))
+        engine.pop(event.streak, isPearl(event.bubble))
       },
       onMiss: (event) => effects.miss(performance.now(), event.x, event.y),
       onFinish: () => {
         show('time')
-        audio.end()
+        engine.end()
         doneTimer = window.setTimeout(() => latest.current.onDone(game.result()), TIME_UP_MS)
       },
     }
@@ -99,6 +99,7 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
 
     let raf = 0
     let countdownStart: number | null = null
+    let lastTick = -1
     let goUntil = 0
     let cssWidth = 0
     let cssHeight = 0
@@ -165,14 +166,26 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
       resize()
 
       if (game.phase === 'ready') {
-        countdownStart ??= now
-        const step = Math.floor((now - countdownStart) / COUNTDOWN_STEP_MS)
-        if (step >= 3) {
-          game.start(now)
-          goUntil = now + GO_SHOWN_MS
-          show('go')
+        if (latest.current.settingsOpen) {
+          // The settings window is open: the countdown waits and starts again from 3.
+          countdownStart = null
+          lastTick = -1
+          show('3')
         } else {
-          show(String(3 - step) as Overlay)
+          countdownStart ??= now
+          const step = Math.floor((now - countdownStart) / COUNTDOWN_STEP_MS)
+          if (step >= 3) {
+            game.start(now)
+            goUntil = now + GO_SHOWN_MS
+            show('go')
+            engine.go()
+          } else {
+            show(String(3 - step) as Overlay)
+            if (step !== lastTick) {
+              lastTick = step
+              engine.tick(3 - step)
+            }
+          }
         }
       } else {
         game.tick(now)
@@ -197,25 +210,29 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
 
     const onPointerDown = (event: PointerEvent) => {
       event.preventDefault()
-      audio.unlock()
       if (game.phase !== 'running') return
       const box = canvas.getBoundingClientRect()
       const at = toField(fit, event.clientX - box.left, event.clientY - box.top)
       game.tap(performance.now(), at.x, at.y)
     }
 
-    // Switching apps or tabs pauses the round. The time away is never counted, and the
-    // player decides when to carry on. A countdown that was interrupted starts again.
-    const onVisibility = () => {
-      if (!document.hidden) return
+    // Switching apps or tabs, or opening the settings window, pauses the round. The time away is
+    // never counted, and the player decides when to carry on. A countdown that was interrupted
+    // starts again.
+    const interrupt = () => {
       const now = performance.now()
       if (game.phase === 'running') {
         game.pause(now)
         if (game.isPaused) show('paused')
       } else if (game.phase === 'ready') {
         countdownStart = null
+        lastTick = -1
         show('3')
       }
+    }
+    interruptRound.current = interrupt
+    const onVisibility = () => {
+      if (document.hidden) interrupt()
     }
 
     canvas.addEventListener('pointerdown', onPointerDown)
@@ -227,11 +244,10 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
       window.clearTimeout(doneTimer)
       canvas.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('visibilitychange', onVisibility)
-      audio.close()
-      sound.current = null
       resumeRound.current = () => undefined
+      interruptRound.current = () => undefined
     }
-  }, [round.seed, round.field_width, round.field_height])
+  }, [round.seed, round.field_width, round.field_height, engine])
 
   const sceneStyle = { '--scene-bg': `url("${art.bgPortrait}")` } as CSSProperties
 
@@ -252,7 +268,7 @@ export default function PlayScreen({ round, muted, onToggleMute, onDone }: Props
             30
           </span>
         </div>
-        <SettingsButton size={46} muted={muted} onToggle={onToggleMute} />
+        <SettingsButton size={46} />
       </div>
 
       {overlay === 'paused' ? (

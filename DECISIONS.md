@@ -650,6 +650,7 @@ A few short tones made with the Web Audio API, so there are no audio files to lo
 pitch rises with the streak, a pearl rings twice and the end of a round has three notes.
 The context is created on the first tap, because browsers refuse sound before one. The
 gear in the corner mutes it, and the choice is kept.
+(Replaced in PR 12: one engine for the whole visit, music, and a settings window.)
 
 ### Smaller choices
 - DIVE IN and PLAY AGAIN show "DIVING..." and wait for the server, so a double tap cannot
@@ -836,6 +837,11 @@ before merging.
 - A crash screen (`ErrorBoundary`) replaces a blank page if drawing a screen throws: a plain message and a
   Reload button. A waiting score is already written down, so reloading does not lose it.
 - A queued score is never shown as saved. The line under the score says what is true.
+- On a wide screen the Game Over layout has SHARE on the left and PLAY AGAIN on the right. With no SHARE
+  (it is not offered yet, and will not be for a practice round) PLAY AGAIN used to stay in the right-hand
+  slot, off to the side of the score. It now sits under the score when SHARE is absent
+  (`OVER.landscape.playAlone`), and `tests/geometry.test.ts` checks it stays centred and clear of the board.
+  The phone layout stacks the buttons in a centred column, so it was never affected.
 
 ### Known limits
 - **A score only survives if some storage worked.** If both Facebook's player data and localStorage are
@@ -851,6 +857,84 @@ before merging.
   checked by hand: switch the network off in DevTools, finish a round, switch it on.
 - **Two devices, one player.** If the same player has waiting scores on two devices, Facebook's copy is
   overwritten by whichever wrote last; each device keeps its own local copy, so neither loses its own.
+
+## PR 12: Music, more sounds and a settings window
+
+### What the player gets
+Background music on every screen, a countdown beep and a "go" sound, a soft sound on every button, a tune
+when the game over screen appears (and a brighter one for a new best), and the old pops. The gear in the
+corner now opens a settings window instead of just muting: a switch and a volume slider for the music, and
+the same for the sound effects. The choices are remembered. A slash on the gear means nothing can be heard.
+
+### One audio engine for the whole visit
+Before, each round made its own audio context and closed it at the end, so nothing could play across
+screens. Now `audio/engine.ts` owns one context, with two volumes in front of it (music and effects) and a
+compressor behind them so the music and a burst of pops never add up to a crackle. Screens ask for sounds by
+name (`pop`, `tick`, `go`, `end`, `gameOver`, `newBest`) and never touch Web Audio.
+- Sound is unlocked by the first tap or key press anywhere (`SoundProvider`), which also starts the music.
+- Every button gets its tap sound from one click listener in the provider, so no screen has to ask for it.
+- When the page is hidden everything is suspended, and the music picks up where it was when it comes back.
+- Turning the music off or to zero stops the music writing itself, so it costs nothing while it is off.
+
+### The music is written as notes, not recorded
+There are no audio files. `audio/music.ts` is a table of notes (eight bars, four chords, a pad, a bass and
+a plucked tune that echoes) and `audio/voices.ts` plays them with oscillators. Reasons: nothing to download
+(Facebook's size guidance is 5 MB and the pictures already use most of it), no licence to worry about, and
+it starts at once. The cost is that it sounds like a synthesiser, not a band. If a recorded track is wanted
+later, only `startMusic` in the engine has to change to play an audio file instead.
+I cannot listen, so I checked what a machine can check. I rendered the music and every sound offline in a
+real browser engine and measured them:
+- Nothing clips (the loudest peak with the music at full volume is well under 0 dB).
+- At the default sliders the music sits about 7 dB under a pop, so pops stay clear. Turning the music slider
+  all the way up lets it pass the pops, which is the player's choice.
+- The three parts are about equally loud, and the bass has a quiet octave above it, because a phone speaker
+  cannot play the low note.
+Whether it is pleasant is a matter of taste that only a person can judge.
+
+### Volume sliders are not straight lines
+Loudness is heard on a curve, so a slider that maps 0 to 1 straight onto the volume feels as if nothing
+happens until the very top. The slider position is squared (`gainFor`). Dragging the effects slider plays a
+sample pop (at most every 140 ms) so the loudness can be heard while setting it; the music is already playing.
+
+### The settings window
+Designed in code from the pieces that already exist (the glass panel, the pearl button, Lilita One and
+Fredoka), not in Figma first: it is one small window and it has to match the screens exactly. It can be
+added to the Figma file afterwards if the design file should stay the source.
+- It sits over everything in real pixels (not design pixels), so it is the same on every screen. On a big
+  window it grows to match the screens (`modalScale`, never above 1.7 times).
+- Opening it during a round pauses the round, like switching to another app. When it closes, the Paused
+  screen is there and the player taps CONTINUE. If it is opened during the countdown, the countdown starts
+  again from 3 afterwards.
+- Switches are real switches (`role="switch"`), sliders are real range inputs, Tab stays inside the window,
+  Escape closes it, and the focus goes back to the gear. A slider is greyed out while its switch is off.
+- Letting go of a slider outside the window does not close it: closing needs the press and the release
+  both on the dark backdrop.
+
+### Saved choices, and the old mute switch
+The settings are kept under the key `audio` in the same place as everything else (Facebook's player data, or
+localStorage outside Facebook), saved 0.4 s after the last change so a slider drag is one save. A damaged
+save is repaired field by field. Someone who had muted the game with the old switch (`muted`) is read as
+both switches off, once, so nobody is surprised by sound.
+
+### Which tune plays on the game over screen
+The tune plays as the screen appears. If the server says in time that it is a new best, the brighter tune
+plays instead, so two tunes never talk over each other; if the answer is slow (over 0.6 s) the tune plays
+anyway and the new best tune follows. `state/gameOverJingle.ts` holds the rule and is tested.
+
+### Smaller choices
+- The pop, the end-of-round notes and the pearl ring are unchanged. The old `Sound` class and `useMuted`
+  are gone.
+- The countdown beeps are the same note, and the last one is higher, which is how a countdown is usually
+  heard.
+- There is no sound for a missed tap: it would be heard on every stray tap and soon tire.
+
+### Known limits
+- **I could not listen to any of it.** The levels, the clipping and the balance were measured, and the
+  logic is tested, but the taste of the music and the sounds is untested by a person.
+- **Chrome and Facebook's app decide when sound may start.** Nothing plays until the first tap, by the
+  browsers' rules. On iPhones the silent switch can also mute web audio; I have not tested that.
+- **Settings are not tested with a real Facebook account's saved data across devices**, only with the
+  stand-in platform and unit tests of the parsing.
 
 ## Known limits and what I would do with more time
 
