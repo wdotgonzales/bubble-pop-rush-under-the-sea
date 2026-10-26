@@ -1174,6 +1174,22 @@ for each way):
 - Refreshing while the Dashboard stays open. It is current when it opens; HOME and then DASHBOARD again, or Try
   again, fetch it again.
 
+## Esc pauses the round
+
+On a computer, Esc during a round shows the Paused screen, the same one that switching apps or opening the
+settings window brings up. Esc on the Paused screen carries on with the round, so one key does both. The rule is
+`escapeAction` in `game/keys.ts`, a plain function with a test for each case:
+- **Only while the round is running or paused.** During the 3-2-1 countdown and after "Time!" it does nothing:
+  there is no round to stop, and a pause there would have nothing to carry on from.
+- **Not while the settings window is open.** Esc closes that window, and it must not also pause or resume the
+  round underneath. The window already paused the round when it opened, so the Paused screen is what the player
+  sees once it closes, and a second Esc then carries on.
+- **A held key does nothing extra.** The keyboard repeats Esc while it is held, which would flicker the screen
+  between Paused and playing, so a repeating press is ignored.
+- **Time away is not counted,** because it goes through the same pause as switching apps: the clock is frozen
+  and the score is untouched.
+- There is no on-screen hint. Phones have no Esc key, and the buttons are the way on the Paused screen.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
