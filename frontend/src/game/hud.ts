@@ -5,7 +5,7 @@
 /** Space above the pills. The real one is larger on a phone with a notch (a safe area). */
 export const HUD_TOP_PX = 12
 /** Keep in step with .hud-pill in play.css. */
-export const HUD_PILL_PX = 68
+export const HUD_PILL_PX = 56
 /** Free space between the pills and the field. */
 export const HUD_GAP_PX = 14
 
