@@ -5,6 +5,7 @@ import { Effects } from '../game/effects'
 import { GameRound, type RoundEvents, type RoundResult } from '../game/engine'
 import { fitField, toField, type FieldFit } from '../game/fit'
 import { HUD_GAP_PX, HUD_PILL_PX } from '../game/hud'
+import { escapeAction } from '../game/keys'
 import { isPearl, tintFor } from '../game/palette'
 import { drawFrame, drawnPosition } from '../game/render'
 import type { RoundStart } from '../types'
@@ -237,8 +238,21 @@ export default function PlayScreen({ round, onDone, onGoHome }: Props) {
       if (document.hidden) interrupt()
     }
 
+    // Esc pauses the round and, on the Paused screen, carries on with it.
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = escapeAction({
+        key: event.key,
+        repeat: event.repeat,
+        phase: game.phase,
+        settingsOpen: latest.current.settingsOpen,
+      })
+      if (action === 'pause') interrupt()
+      else if (action === 'resume') resumeRound.current()
+    }
+
     canvas.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('visibilitychange', onVisibility)
+    document.addEventListener('keydown', onKeyDown)
     raf = requestAnimationFrame(frame)
 
     return () => {
@@ -246,6 +260,7 @@ export default function PlayScreen({ round, onDone, onGoHome }: Props) {
       window.clearTimeout(doneTimer)
       canvas.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('visibilitychange', onVisibility)
+      document.removeEventListener('keydown', onKeyDown)
       resumeRound.current = () => undefined
       interruptRound.current = () => undefined
     }
