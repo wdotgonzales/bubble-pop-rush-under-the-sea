@@ -1193,6 +1193,43 @@ settings window brings up. Esc on the Paused screen carries on with the round, s
   and the score is untouched.
 - There is no on-screen hint. Phones have no Esc key, and the buttons are the way on the Paused screen.
 
+## Every attempt: `GET /scores`
+
+`GET /leaderboard` lists each player once, with their best. `GET /scores` lists every scored attempt from every
+player, so one player who played five times shows up five times. It is public, like the leaderboard, and it
+exists so anyone can see the whole history of scores, not only the winners.
+
+It takes `page` (default 1, at most 10,000), `page_size` (default 10, at most 50) and `sort`, and returns
+`entries` (each with `display_name`, `avatar_url`, `score` and `played_at`) plus `page`, `page_size`, `sort`,
+`total` and `total_pages`. It uses the same paging and the same limits as the leaderboard, so a client that can
+read one can read the other.
+
+- **Only accepted rounds are listed.** Those are the ones the server replayed and scored itself. A rejected round
+  never got a score (it is kept only as an audit record), and an expired or unfinished round never had one, so
+  none of them appear. Accepted rounds are never deleted (see the cleanup job), so the history does not shrink.
+- **A score of zero is listed.** It is a real, verified attempt, and hiding it would make "all attempts" untrue.
+  The leaderboard leaves zeros out because it ranks players, not attempts.
+- **Two orders, and neither can tie.** `sort=best` (the default) is the higher score first, then whoever got it
+  earlier, then the lower round id, the same rule as the leaderboard. `sort=recent` is the newest first, then
+  the higher round id. Because the id breaks every tie, a page boundary never repeats or drops an attempt (a test
+  pages through 17 attempts full of equal scores and equal times in both orders and checks the pieces add up to
+  the whole list).
+- **No rank column.** In `best` order the position is the offset plus the place on the page, but a "rank" over
+  attempts invites confusion with the leaderboard rank, where each player is counted once. `/leaderboard` is
+  where a player's rank lives.
+- **No sign-in, and no `me`.** The endpoint ignores any `Authorization` header, even a wrong one: there is nothing
+  personal in the answer, so a broken session has nothing to hide behind, unlike the leaderboard, where a 401
+  tells the game to sign in again. A test sends no header, a good one and a garbage one, and gets the same answer.
+- **What is public.** Display names, avatar addresses, scores and when each was accepted: what the leaderboard
+  already shows, plus the time. No player id, Facebook id, round id, seed or tap log is returned (a test checks
+  this). The same two cost notes as the leaderboard apply: the page size cap bounds one request, Cloudflare sits in
+  front, and there is no rate limit of our own.
+- **No new index.** The query filters accepted rounds and sorts them, which at this size is quick. The table
+  grows with every round played, so with real traffic the first fix is a partial index on `rounds (score DESC,
+  submitted_at, id) WHERE status = 'accepted'` (and one on `submitted_at DESC` for `recent`), added in a migration.
+  Left out for now because a migration changes the production database and nothing needs it yet.
+- **Not done.** The game does not use it, and there is no filter by player (players have no public id, on purpose).
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
