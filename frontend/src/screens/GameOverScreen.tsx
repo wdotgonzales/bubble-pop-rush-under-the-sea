@@ -133,7 +133,7 @@ export default function GameOverScreen({
           </PearlButton>
         </div>
       )}
-      <div className="abs" style={{ left: g.play.left, top: g.play.top }}>
+      <div className="abs" style={{ left: onShare ? g.play.left : g.playAlone.left, top: g.play.top }}>
         <PearlButton
           variant="cream"
           width={g.play.width}

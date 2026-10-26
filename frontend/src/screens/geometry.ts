@@ -61,6 +61,8 @@ export const OVER = {
     best: { left: 291, top: 383, width: 207, fontSize: 26 },
     share: { left: 150, top: 436, width: 222, height: 70, fontSize: 34 },
     play: { left: 404, top: 436, width: 229, height: 70, fontSize: 34 },
+    /** With no SHARE beside it, PLAY AGAIN sits under the score instead of in the right-hand slot. */
+    playAlone: { left: 285 },
     playSparkles: [
       { x: 213, y: -9, size: 19 },
       { x: -2, y: 44, size: 12 },
