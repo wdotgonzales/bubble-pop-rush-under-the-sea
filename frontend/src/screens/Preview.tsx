@@ -8,6 +8,7 @@ import type { Load } from '../state/types'
 import type { Leaderboard } from '../types'
 import type { Layout } from '../ui/layout'
 import { usePickedLayout } from '../ui/usePickedLayout'
+import CardPreview from './CardPreview'
 import GameOverScreen from './GameOverScreen'
 import PlayScreen from './PlayScreen'
 import StartScreen from './StartScreen'
@@ -32,10 +33,11 @@ function boardFor(name: string | null): Load<Leaderboard> {
 
 /**
  * Design review: the screens with sample data and no network.
- *   ?preview=start | over | play   which screen (play runs a real round from &seed=, with no network)
+ *   ?preview=start | over | play | card   which screen (play runs a real round from &seed=, with no network;
+ *                                           card is the picture shared from the game over screen, for &score=)
  *   &layout=portrait | landscape   force a layout on any window
  *   &score=22&best=42&new=1   numbers on the game over screen
- *   &home=0 hides GO HOME; &share=1 shows SHARE (not offered yet), to review the button layouts
+ *   &home=0 hides GO HOME; &share=1 shows SHARE (in the game it is offered only inside Facebook)
  *   &board=loading | error | empty   leaderboard states
  *   &notice=...&practice=1   the start screen's problem line and the practice link under it
  *   &settings=1   open the settings window on top of the screen
@@ -74,6 +76,10 @@ function PreviewScreens({ params }: { params: URLSearchParams }) {
         onGoHome={nothing}
       />
     )
+  }
+
+  if (params.get('preview') === 'card') {
+    return <CardPreview score={toCount(params.get('score'), 57)} />
   }
 
   if (params.get('preview') === 'over') {

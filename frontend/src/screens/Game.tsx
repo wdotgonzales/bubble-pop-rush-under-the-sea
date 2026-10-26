@@ -5,9 +5,12 @@ import { saveLabel } from '../state/labels'
 import { useGameData, type GameData } from '../state/useGameData'
 import { useGameOverSound } from '../state/useGameOverSound'
 import { useArtReady } from '../state/useArtReady'
+import { canShare } from '../state/share'
 import { useRoundFlow } from '../state/useRoundFlow'
 import { useScoreSync } from '../state/useScoreSync'
 import { useServices } from '../state/useServices'
+import { useShare } from '../state/useShare'
+import type { Platform } from '../platform'
 import type { Layout } from '../ui/layout'
 import { usePickedLayout } from '../ui/usePickedLayout'
 import { useViewport } from '../ui/useViewport'
@@ -32,7 +35,7 @@ export default function Game() {
 
   return (
     <SoundProvider platform={services?.platform ?? null} ready={data.boot === 'ready'}>
-      <Screens layout={layout} viewport={viewport} data={data} flow={flow} />
+      <Screens layout={layout} viewport={viewport} data={data} flow={flow} platform={services?.platform ?? null} />
     </SoundProvider>
   )
 }
@@ -42,11 +45,13 @@ interface ScreensProps {
   viewport: ReturnType<typeof useViewport>
   data: GameData & { refresh: () => void }
   flow: ReturnType<typeof useRoundFlow>
+  platform: Platform | null
 }
 
-function Screens({ layout, viewport, data, flow }: ScreensProps) {
+function Screens({ layout, viewport, data, flow, platform }: ScreensProps) {
   const { screen, starting, begin, beginPractice, goHome, finish } = flow
   const { engine } = useSound()
+  const { share, sharing } = useShare(platform)
 
   useGameOverSound(screen, engine)
 
@@ -76,6 +81,8 @@ function Screens({ layout, viewport, data, flow }: ScreensProps) {
         starting={starting}
         onPlayAgain={() => void begin(viewport)}
         onGoHome={goHome}
+        onShare={canShare(platform?.kind ?? null, save, screen.score) ? () => share(screen.score) : undefined}
+        sharing={sharing}
         onRetryBoard={data.refresh}
       />
     )
