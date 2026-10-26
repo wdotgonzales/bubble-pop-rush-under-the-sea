@@ -25,6 +25,8 @@ interface Props {
   starting?: boolean
   /** Share is only offered when there is something to do with the tap. */
   onShare?: () => void
+  /** A share is under way (the card is being drawn or the dialog is open): SHARE waits. */
+  sharing?: boolean
   onRetryBoard: () => void
 }
 
@@ -43,6 +45,7 @@ export default function GameOverScreen({
   onGoHome,
   starting = false,
   onShare,
+  sharing = false,
   onRetryBoard,
 }: Props) {
   const best = bestLabel ?? personalBestLabel(score, bestScore, isNewBest)
@@ -74,6 +77,7 @@ export default function GameOverScreen({
                 height={g.button.height}
                 fontSize={g.button.fontSize}
                 icon={<ShareIcon />}
+                disabled={sharing}
                 onClick={onShare}
               >
                 SHARE
@@ -146,6 +150,7 @@ export default function GameOverScreen({
             height={slots.share.height}
             fontSize={slots.share.fontSize}
             icon={<ShareIcon />}
+            disabled={sharing}
             onClick={onShare}
           >
             SHARE

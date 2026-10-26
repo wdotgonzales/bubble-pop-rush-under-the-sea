@@ -946,8 +946,8 @@ way off the game over screen was another round.
   drawn in), PLAY AGAIN stays on the right. `overActions(share, home)` in `screens/geometry.ts` is the one
   place that says where each button goes, for every combination (PLAY AGAIN alone, one beside it, or all
   three), and `tests/geometry.test.ts` checks every combination stays in the left column, in one row, in
-  order and centred under the score. The three-button row is not shown yet: it is there so the share card
-  can be added without redrawing this screen.
+  order and centred under the score. The three-button row is what a player sees inside Facebook, where
+  SHARE is offered (see "Sharing a score" below).
 - **Phones:** the two buttons sit side by side under the personal best, not stacked, so the leaderboard
   keeps its room. GO HOME is the shorter word, so it gets the narrower button (128 and 170 wide in the
   310 pixels the panel allows, label size 23). With a stand-in font the longer label touched the button edges;
@@ -998,6 +998,56 @@ placed side by side. I rebuilt the picture so they melt into each other:
 - On a very wide window (wider than about 2.3 to 1) the stage picture fades into a blurred copy of itself on
   both sides, which can still show as a slightly darker band. That is the existing behaviour for odd window
   shapes and is not new.
+
+## Sharing a score
+
+A SHARE button on the game over screen opens Facebook's own share dialog with a picture of the score and
+the message "I scored 57 in 30 seconds on Bubble Pop Rush! Can you beat me?". Sharing goes through
+`platform.share`, like every other Facebook call, so nothing in the screen knows about the SDK.
+
+### The card
+A 1200 x 630 picture, the shape Facebook shows shared images in: the title, a pearl plate with "I scored",
+the score big, "in 30 seconds!", the turtle, and bubbles. `src/share/shareCard.ts` draws it on a canvas when
+the player taps, rather than taking a picture of the screen:
+- It looks the same for everyone. The game over screen changes with the window (phone, desktop, a very wide
+  window); the card must not.
+- It needs nothing from the network. The only picture it uses is the turtle, which the game has already
+  downloaded. The sea, the plate, the letters and the bubbles are drawn with code.
+- The "30" comes from the round length in `shared/spawn.js`, so it can never disagree with the game.
+- The same score always gives the same bubbles, so a card is reproducible and testable.
+- A long score (four digits, say) shrinks its type to fit the plate instead of running off it.
+- The picture is under 410 KB as a PNG. That is mostly the sea gradient; it is well inside what the share
+  call takes, and on a mobile connection it is a moment, not a wait.
+- `?preview=card&score=57` shows the card exactly as it is sent, with its size, for design review.
+
+### When SHARE is offered
+`canShare` in `state/share.ts` is the one rule, with a test for each part of it:
+- **Only inside Facebook.** The share call does not exist anywhere else, and a button that does nothing
+  is worse than no button. Reviewers who open the game in a normal browser will not see SHARE.
+- **Never for a practice round.** It is not a real score and nothing was saved.
+- **Never for a score the server refused.** It is not a score the player can stand behind.
+- **Never for a score of 0.** Nobody wants to post "I scored 0".
+- A score that is still being saved, or is waiting for a connection to be sent, can be shared: it is the
+  player's own result.
+
+### When it goes wrong
+Sharing is a nice extra, so it never gets in the way of the game.
+- Closing the dialog is the normal way for a share to end, so it is not treated as an error: the button
+  just works again. Real failures are noted in the console and the screen is left as it was. There is no
+  error message, because nothing the player can do would fix it and Facebook shows its own.
+- One share at a time: a second tap while the card is being drawn or the dialog is open does nothing, so
+  the dialog can never open twice. SHARE is greyed out meanwhile.
+- The button is released after two minutes if the dialog never answers, so a stuck SDK call cannot leave
+  it disabled for good.
+- If the turtle cannot be loaded (or a browser refuses to export a canvas that has had it drawn on), the
+  card is drawn without the turtle. A plainer card is better than a SHARE that does nothing.
+- If the fonts have not arrived after three seconds, the card is drawn with the fallback fonts for the
+  same reason.
+
+### Not done
+- Sharing the score without Facebook (a download, or the browser's own share sheet). The game's home is
+  Facebook, so this was left out.
+- A different message for a new personal best. It is a one-line change in `shareText` if wanted.
 
 ## Known limits and what I would do with more time
 
