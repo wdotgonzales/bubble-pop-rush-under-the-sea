@@ -51,6 +51,13 @@ export const OVER = {
       { x: 241, y: -9, size: 19 },
       { x: -2, y: 38, size: 12 },
     ] satisfies SparkleSpec[],
+    // GO HOME and PLAY AGAIN side by side: the panel is 310 wide inside its padding. GO HOME is the
+    // shorter word, so PLAY AGAIN gets the wider button and both labels have room at this size.
+    pair: { home: 128, play: 170, gap: 12, height: 60, fontSize: 23 },
+    pairSparkles: [
+      { x: 152, y: -9, size: 19 },
+      { x: -2, y: 38, size: 12 },
+    ] satisfies SparkleSpec[],
   },
   landscape: {
     panel: { left: 63, top: 64, width: 897, height: 466 } satisfies Box,
@@ -59,14 +66,58 @@ export const OVER = {
     turtle: { left: 215, top: 188, width: 248, height: 183 } satisfies Box,
     score: { left: 294, top: 282, width: 211, height: 83, fontSize: 29 },
     best: { left: 291, top: 383, width: 207, fontSize: 26 },
-    share: { left: 150, top: 436, width: 222, height: 70, fontSize: 34 },
-    play: { left: 404, top: 436, width: 229, height: 70, fontSize: 34 },
-    /** With no SHARE beside it, PLAY AGAIN sits under the score instead of in the right-hand slot. */
-    playAlone: { left: 285 },
-    playSparkles: [
-      { x: 213, y: -9, size: 19 },
-      { x: -2, y: 44, size: 12 },
-    ] satisfies SparkleSpec[],
     board: { left: 667, top: 82, width: 280, height: 434 } satisfies Box,
   },
 } as const
+
+/** A button on the wide game over screen, in design pixels. */
+export interface ActionSlot {
+  left: number
+  top: number
+  width: number
+  height: number
+  fontSize: number
+}
+
+export interface OverActions {
+  share?: ActionSlot
+  home?: ActionSlot
+  play: ActionSlot
+}
+
+const ACTION_TOP = 436
+const ACTION_HEIGHT = 70
+
+/**
+ * Where the buttons go on the wide game over screen. They always sit in one row under the score:
+ * - PLAY AGAIN alone is centred under the score.
+ * - With one other button, the two are laid out as in the design: that one on the left, PLAY AGAIN
+ *   on the right.
+ * - With SHARE and GO HOME and PLAY AGAIN, the three are a little smaller so they still fit in the
+ *   left column, clear of the leaderboard.
+ */
+export function overActions(share: boolean, home: boolean): OverActions {
+  const slot = (left: number, width: number, fontSize: number): ActionSlot => ({
+    left,
+    top: ACTION_TOP,
+    width,
+    height: ACTION_HEIGHT,
+    fontSize,
+  })
+  if (share && home) {
+    return { share: slot(133, 160, 26), home: slot(305, 160, 26), play: slot(477, 184, 26) }
+  }
+  if (share || home) {
+    const other = slot(150, 222, 34)
+    return { ...(share ? { share: other } : { home: other }), play: slot(404, 229, 34) }
+  }
+  return { play: slot(285, 229, 34) }
+}
+
+/** The sparkles on PLAY AGAIN follow its width, so they stay on the same corners. */
+export function playSparkles(width: number): SparkleSpec[] {
+  return [
+    { x: width - 16, y: -9, size: 19 },
+    { x: -2, y: 44, size: 12 },
+  ]
+}

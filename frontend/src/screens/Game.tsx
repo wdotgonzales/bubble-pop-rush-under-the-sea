@@ -45,7 +45,7 @@ interface ScreensProps {
 }
 
 function Screens({ layout, viewport, data, flow }: ScreensProps) {
-  const { screen, starting, begin, beginPractice, finish } = flow
+  const { screen, starting, begin, beginPractice, goHome, finish } = flow
   const { engine } = useSound()
 
   useGameOverSound(screen, engine)
@@ -68,6 +68,7 @@ function Screens({ layout, viewport, data, flow }: ScreensProps) {
         board={data.board}
         starting={starting}
         onPlayAgain={() => void begin(viewport)}
+        onGoHome={goHome}
         onRetryBoard={data.refresh}
       />
     )

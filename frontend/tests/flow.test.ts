@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CONFIG, generateSchedule, isValidField } from '@shared/spawn.js'
 import { MAX_AGE_MS, takeUsable } from '../src/game/prefetch'
 import { practiceRound } from '../src/game/practice'
-import { applyOutcome, type FlowScreen } from '../src/state/flow'
+import { applyOutcome, homeScreen, settleScreen, type FlowScreen } from '../src/state/flow'
 import { PRACTICE_LABEL, saveLabel } from '../src/state/labels'
 import type { RoundStart } from '../src/types'
 
@@ -123,5 +123,26 @@ describe('takeUsable (the round fetched ahead)', () => {
   it('throws away a round with a field the build would not play', () => {
     const bad = { round: { ...round, field_width: 5 }, fetchedAt: 0 }
     expect(takeUsable(bad, { width: 5, height: 19231 }, 1)).toBeNull()
+  })
+})
+
+describe('going home', () => {
+  it('shows the start screen with nothing to report and no practice offer', () => {
+    expect(homeScreen()).toEqual({ name: 'start', notice: null, canPractice: false })
+  })
+
+  it('is not brought back to the game over screen by a score that arrives late', () => {
+    const home = homeScreen()
+    const result = { round_id: 'r1', status: 'accepted' as const, score: 9, best_score: 9, is_new_best: false, rank: 1 }
+    expect(settleScreen(home, 'r1', { status: 'saved', result }) === home).toBe(true)
+    expect(settleScreen(home, 'r1', { status: 'queued' }) === home).toBe(true)
+  })
+
+  it('still settles the game over screen of the same round', () => {
+    expect(settleScreen(OVER, 'r1', { status: 'queued' })).toEqual({ ...OVER, save: { status: 'queued' } })
+  })
+
+  it('leaves the game over screen of a later round alone', () => {
+    expect(settleScreen(OVER, 'r0', { status: 'queued' }) === OVER).toBe(true)
   })
 })

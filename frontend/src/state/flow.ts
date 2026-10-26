@@ -29,6 +29,20 @@ export interface View {
   height: number
 }
 
+/**
+ * A score's outcome arriving at any time, even after the player has moved on. It only changes the
+ * game over screen of the same round: on the start screen (after GO HOME) or in a later round it
+ * changes nothing, so a late answer can never bring an old game over screen back.
+ */
+export function settleScreen(current: FlowScreen, roundId: string, outcome: ScoreOutcome): FlowScreen {
+  return current.name === 'over' && current.roundId === roundId ? applyOutcome(current, outcome) : current
+}
+
+/** The start screen as it is when the player chooses to go home: no problem to report. */
+export function homeScreen(): FlowScreen {
+  return { name: 'start', notice: null, canPractice: false }
+}
+
 /** The game over screen after the server (or the queue) has said something about the score. */
 export function applyOutcome(screen: OverScreen, outcome: ScoreOutcome): OverScreen {
   switch (outcome.status) {

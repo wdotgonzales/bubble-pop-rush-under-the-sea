@@ -936,6 +936,36 @@ anyway and the new best tune follows. `state/gameOverJingle.ts` holds the rule a
 - **Settings are not tested with a real Facebook account's saved data across devices**, only with the
   stand-in platform and unit tests of the parsing.
 
+## GO HOME on the game over screen
+
+A GO HOME button now sits beside PLAY AGAIN and takes the player back to the start screen. Before, the only
+way off the game over screen was another round.
+
+### Layout
+- **Wide screens:** GO HOME takes the left slot of the design's two-button row (the slot the SHARE button is
+  drawn in), PLAY AGAIN stays on the right. `overActions(share, home)` in `screens/geometry.ts` is the one
+  place that says where each button goes, for every combination (PLAY AGAIN alone, one beside it, or all
+  three), and `tests/geometry.test.ts` checks every combination stays in the left column, in one row, in
+  order and centred under the score. The three-button row is not shown yet: it is there so the share card
+  can be added without redrawing this screen.
+- **Phones:** the two buttons sit side by side under the personal best, not stacked, so the leaderboard
+  keeps its room. GO HOME is the shorter word, so it gets the narrower button (128 and 170 wide in the
+  310 pixels the panel allows, label size 23). With a stand-in font the longer label touched the button edges;
+  with the real font loaded it has at least 10 px each side even on a 320 px wide phone (measured, not
+  guessed). If SHARE is offered it goes on its own row above the pair.
+- GO HOME is the blue (aqua) button and PLAY AGAIN stays the cream one, so the main action is the same
+  everywhere.
+
+### Behaviour
+- Both buttons wait while the next round is being fetched (the same "DIVING..." wait), so a tap on GO HOME
+  cannot be undone a moment later by the round arriving.
+- GO HOME is also there after a practice round, which is the way back to the start screen.
+- The start screen after GO HOME has no problem to report and no practice offer: it is a fresh start.
+- A score that is still being saved keeps being saved. When the server answers after the player has gone
+  home, the answer refreshes the best score shown on the start screen but cannot bring the old game over
+  screen back. That rule is `settleScreen` in `state/flow.ts` and is tested.
+- The next round fetched ahead while the game over screen was showing is kept, so DIVE IN is still quick.
+
 ## Known limits and what I would do with more time
 
 - **Perfect-replay bots.** A bot that knows the seed and taps every bubble at plausible human
