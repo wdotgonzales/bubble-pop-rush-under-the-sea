@@ -35,6 +35,7 @@ function boardFor(name: string | null): Load<Leaderboard> {
  *   ?preview=start | over | play   which screen (play runs a real round from &seed=, with no network)
  *   &layout=portrait | landscape   force a layout on any window
  *   &score=22&best=42&new=1   numbers on the game over screen
+ *   &home=0 hides GO HOME; &share=1 shows SHARE (not offered yet), to review the button layouts
  *   &board=loading | error | empty   leaderboard states
  *   &notice=...&practice=1   the start screen's problem line and the practice link under it
  *   &settings=1   open the settings window on top of the screen
@@ -83,7 +84,8 @@ function PreviewScreens({ params }: { params: URLSearchParams }) {
         isNewBest={params.get('new') === '1'}
         board={boardFor(params.get('board'))}
         onPlayAgain={nothing}
-        onShare={nothing}
+        onGoHome={params.get('home') === '0' ? undefined : nothing}
+        onShare={params.get('share') === '1' ? nothing : undefined}
         onRetryBoard={nothing}
       />
     )

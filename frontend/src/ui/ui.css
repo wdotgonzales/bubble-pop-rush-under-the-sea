@@ -659,6 +659,13 @@
   padding: 16px 0 20px;
 }
 
+.over-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
 /* ---------- Leaderboard ---------- */
 
 .board {

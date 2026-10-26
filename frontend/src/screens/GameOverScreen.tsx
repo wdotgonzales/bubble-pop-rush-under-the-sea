@@ -8,7 +8,7 @@ import type { Layout } from '../ui/layout'
 import PearlButton from '../ui/PearlButton'
 import Scene from '../ui/Scene'
 import ScorePill from '../ui/ScorePill'
-import { OVER } from './geometry'
+import { OVER, overActions, playSparkles } from './geometry'
 
 interface Props {
   layout: Layout
@@ -19,6 +19,8 @@ interface Props {
   bestLabel?: string
   board: Load<LeaderboardData>
   onPlayAgain: () => void
+  /** Back to the start screen. Both buttons wait while the next round is being fetched. */
+  onGoHome?: () => void
   /** The next round is being fetched: PLAY AGAIN waits. */
   starting?: boolean
   /** Share is only offered when there is something to do with the tap. */
@@ -38,6 +40,7 @@ export default function GameOverScreen({
   bestLabel,
   board,
   onPlayAgain,
+  onGoHome,
   starting = false,
   onShare,
   onRetryBoard,
@@ -76,17 +79,32 @@ export default function GameOverScreen({
                 SHARE
               </PearlButton>
             )}
-            <PearlButton
-              variant="cream"
-              width={g.button.width}
-              height={g.button.height}
-              fontSize={g.button.fontSize}
-              sparkles={g.playSparkles}
-              disabled={starting}
-              onClick={onPlayAgain}
-            >
-              {starting ? 'DIVING…' : 'PLAY AGAIN'}
-            </PearlButton>
+            {/* GO HOME and PLAY AGAIN share a row; alone, PLAY AGAIN is the wide button. */}
+            <div className="over-buttons">
+              {onGoHome && (
+                <PearlButton
+                  variant="aqua"
+                  width={g.pair.home}
+                  height={g.pair.height}
+                  fontSize={g.pair.fontSize}
+                  disabled={starting}
+                  onClick={onGoHome}
+                >
+                  GO HOME
+                </PearlButton>
+              )}
+              <PearlButton
+                variant="cream"
+                width={onGoHome ? g.pair.play : g.button.width}
+                height={onGoHome ? g.pair.height : g.button.height}
+                fontSize={onGoHome ? g.pair.fontSize : g.button.fontSize}
+                sparkles={onGoHome ? g.pairSparkles : g.playSparkles}
+                disabled={starting}
+                onClick={onPlayAgain}
+              >
+                {starting ? 'DIVING…' : 'PLAY AGAIN'}
+              </PearlButton>
+            </div>
           </div>
 
           <Leaderboard state={board} variant="portrait" onRetry={onRetryBoard} />
@@ -96,6 +114,7 @@ export default function GameOverScreen({
   }
 
   const g = OVER.landscape
+  const slots = overActions(Boolean(onShare), Boolean(onGoHome))
   return (
     <Scene layout="landscape" screen="over">
       <section className="glass-panel" style={g.panel} aria-hidden>
@@ -119,13 +138,13 @@ export default function GameOverScreen({
         {best}
       </p>
 
-      {onShare && (
-        <div className="abs" style={{ left: g.share.left, top: g.share.top }}>
+      {onShare && slots.share && (
+        <div className="abs" style={{ left: slots.share.left, top: slots.share.top }}>
           <PearlButton
             variant="aqua"
-            width={g.share.width}
-            height={g.share.height}
-            fontSize={g.share.fontSize}
+            width={slots.share.width}
+            height={slots.share.height}
+            fontSize={slots.share.fontSize}
             icon={<ShareIcon />}
             onClick={onShare}
           >
@@ -133,13 +152,27 @@ export default function GameOverScreen({
           </PearlButton>
         </div>
       )}
-      <div className="abs" style={{ left: onShare ? g.play.left : g.playAlone.left, top: g.play.top }}>
+      {onGoHome && slots.home && (
+        <div className="abs" style={{ left: slots.home.left, top: slots.home.top }}>
+          <PearlButton
+            variant="aqua"
+            width={slots.home.width}
+            height={slots.home.height}
+            fontSize={slots.home.fontSize}
+            disabled={starting}
+            onClick={onGoHome}
+          >
+            GO HOME
+          </PearlButton>
+        </div>
+      )}
+      <div className="abs" style={{ left: slots.play.left, top: slots.play.top }}>
         <PearlButton
           variant="cream"
-          width={g.play.width}
-          height={g.play.height}
-          fontSize={g.play.fontSize}
-          sparkles={g.playSparkles}
+          width={slots.play.width}
+          height={slots.play.height}
+          fontSize={slots.play.fontSize}
+          sparkles={playSparkles(slots.play.width)}
           disabled={starting}
           onClick={onPlayAgain}
         >

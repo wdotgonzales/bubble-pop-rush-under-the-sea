@@ -10,7 +10,7 @@ import { practiceRound } from '../game/practice'
 import { takeUsable, type Prefetched } from '../game/prefetch'
 import type { Services } from '../services'
 import type { RoundStart } from '../types'
-import { applyOutcome, type FlowScreen, type View } from './flow'
+import { homeScreen, settleScreen, type FlowScreen, type View } from './flow'
 import { OUTDATED_BUILD_NOTICE, startFailureLabel } from './labels'
 
 export type { FlowScreen, SaveState } from './flow'
@@ -41,9 +41,7 @@ export function useRoundFlow(services: Services | null, onSaved: () => void) {
   useEffect(() => {
     if (!services) return
     return services.scores.subscribe((roundId, outcome) => {
-      setScreen((current) =>
-        current.name === 'over' && current.roundId === roundId ? applyOutcome(current, outcome) : current,
-      )
+      setScreen((current) => settleScreen(current, roundId, outcome))
       if (outcome.status === 'saved') onSavedRef.current()
     })
   }, [services])
@@ -106,6 +104,12 @@ export function useRoundFlow(services: Services | null, onSaved: () => void) {
     [services],
   )
 
+  /** Back to the start screen. Not while a round is being fetched: that is about to change the screen. */
+  const goHome = useCallback(() => {
+    if (busy.current) return
+    setScreen(homeScreen())
+  }, [])
+
   /** Play a round that needs no server. Its score is shown but never sent. */
   const beginPractice = useCallback((view: View) => {
     lastView.current = view
@@ -133,5 +137,5 @@ export function useRoundFlow(services: Services | null, onSaved: () => void) {
     [services, prefetch],
   )
 
-  return { screen, starting, begin, beginPractice, finish }
+  return { screen, starting, begin, beginPractice, goHome, finish }
 }
