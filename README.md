@@ -24,6 +24,50 @@ https://www.figma.com/design/4x8XKjW811d7EmXo8o5MI7/Bubble-Pop-Rush-%C2%B7-Under
 https://tangible-fear-b14.notion.site/SUPERGENE-GLOBAL-SERVICES-INC-GAME-CHALLENGE-NOTES-403db32f353f80c394b3e26ba7373652
 ```
 
+## Tech Stack
+
+### Frontend
+- React 19 and TypeScript 6 (strict mode)
+- Vite 8 for the dev server and build
+- Tailwind CSS 4, plus the Fredoka, Lilita One, Nunito, Coiny, DynaPuff and Roboto fonts through Fontsource
+- HTML canvas 2D for the bubbles and game scene
+- Web Audio API for music and sound effects
+- Facebook Instant Games SDK 8.0 (signed player info and sharing)
+- ESLint 10 with typescript-eslint and the React hooks rules for linting
+- `npm run pack` builds the `fb-build.zip` that gets uploaded to Facebook
+
+### Backend
+- Python 3.13
+- FastAPI, served by Uvicorn
+- Pydantic 2 for request and response validation, and pydantic-settings for config from `.env`
+- SQLAlchemy 2 as the database layer
+- psycopg2 as the Postgres driver
+- Our own code for the signed session tokens (HMAC with a secret key) and for checking Facebook's signature
+
+### Database and migrations
+- PostgreSQL 16
+- Alembic for migrations (`players`, `rounds`, the leaderboard view, round field size)
+- A cleanup job for old rounds
+
+### Tests
+- Frontend: Vitest 4
+- Backend: pytest, with httpx and FastAPI's TestClient, run against a real Postgres test database that the migrations build
+- A shared check (`shared/check-vectors.mjs`) that the JavaScript bubble generator matches the Python one
+
+### Version control and CI/CD
+- Git and GitHub, with one branch and PR per feature
+- GitHub Actions: merging to `main` builds the Docker images, pushes them to GitHub Container Registry (ghcr.io), then deploys over SSH to the server
+
+### Cloud and infrastructure
+- AWS EC2, a single host
+- Docker and Docker Compose for the backend, the frontend, Nginx and Postgres
+- Nginx as the reverse proxy, adding the `/api` prefix
+- Cloudflare for DNS, HTTPS and caching, on the `bubble-pop-rush.fyi` domain
+- Facebook Web Hosting for the game build, with Testing/Staging versions
+
+### Tools
+- Figma for the designs, and Claude Code for building
+
 ## Run it locally
 
 ### What you need
