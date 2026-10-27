@@ -1,5 +1,6 @@
 
 # Bubble Pop Rush: Under the Sea
+<img width="1917" height="1047" alt="image" src="https://github.com/user-attachments/assets/5a055e22-a869-4f25-b75d-7060ed1dfff4" />
 
 This is a 30-second tapping game that runs as a Facebook Instant Game. Bubbles float up on a sea background, and you tap them before they shrink away. You get points for each bubble you pop. You can play it on a phone with your finger or on a desktop with the mouse.
 
