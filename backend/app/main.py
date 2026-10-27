@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import health, leaderboard, rounds, scores, session
 from app.core.config import settings
 
-app = FastAPI(title="Game Challenge API", version="1.0.0")
+app = FastAPI(title="Bubble Pop Rush: Under the Sea - API Docs", version="1.0.0")
 
 # CORS is on in every environment: the Instant Game runs on Facebook's domain,
 # not ours. We use a bearer token (no cookies), so credentials stay off.
